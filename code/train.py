@@ -165,17 +165,17 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         if mse_val[-1] >= max(mse_val):
             torch.save(neural_network.state_dict(),
-                       checkpoint_path + 'best_mse.pt' % (eps))
+                       checkpoint_path + 'best_mse.pt')
             best_mse = eps
 
         if ssim_val[-1] >= max(ssim_val):
             torch.save(neural_network.state_dict(),
-                       checkpoint_path + 'best_ssim.pt' % (eps))
+                       checkpoint_path + 'best_ssim.pt')
             best_ssim = eps
 
         if psnr_val[-1] >= max(psnr_val):
             torch.save(neural_network.state_dict(),
-                       checkpoint_path + 'best_psnr.pt' % (eps))
+                       checkpoint_path + 'best_psnr.pt')
             best_psnr = eps
 
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
@@ -183,7 +183,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         if avg_metrics[-1] >= avg_metrics.max():
             torch.save(neural_network.state_dict(),
-                       checkpoint_path + 'best_average.pt' % (eps))
+                       checkpoint_path + 'best_average.pt')
             best_avg = eps
 
         print('Average Train Loss: %.6f, Validation Loss: %.6f' %
