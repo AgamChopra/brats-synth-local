@@ -89,6 +89,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # evaluation metrics and logging for visualization and evaluation
     ssim_metric = SSIM_Metric()
     psnr_metric = PSNR_Metric()
+    mse_metric = nn.MSELoss()
+    mae_metric = nn.L1Loss()
 
     losses, losses_train, losses_temp, losses_val = [], [], [], []
     critic_losses, critic_losses_train = [], []
@@ -175,23 +177,31 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         neural_network.eval()
         for j in trange(iterations_val):
             with torch.no_grad():
-                x, mask = data_val.load_batch()
+                x, mask = data.load_batch()
                 x, mask = x.float().to(device), mask.float().to(device)
                 whole_mask = (x > 0.).float().to(device)
 
+                known_masked_region = x * mask
                 input_image = (x > 0) * ((mask < 0.5) * x)
                 input_image = torch.cat((input_image, mask), dim=1)
 
                 with autocast():
-                    y = whole_mask * \
-                        neural_network(input_image, gans=True).float()
-                    error = [criterion[i](x, y) for i in range(len(criterion))]
+                    y = whole_mask * neural_network(input_image).float()
+                    synthetic_masked_region = mask * y
 
-                losses_temp.append(sum(error).item())
-                mse.append(-torch.log10(error[0] + 1e-12).item())
-                mae.append(-torch.log10(error[1] + 1e-12).item())
-                ssim.append(-torch.log10(1 - ssim_metric(x, y) + 1e-12).item())
-                psnr.append(psnr_metric(x, y).item())
+                    error = 10 * sum([efunc(known_masked_region,
+                                            synthetic_masked_region,
+                                            mask)
+                                      for efunc in criterion_masked])
+
+                    error += sum([lambdas[i] * criterion[i](
+                        x, y) for i in range(len(criterion))])
+
+                    losses_temp.append(sum(error).item())
+                    mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
+                    mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
+                    ssim.append(-torch.log10(1 - ssim_metric(x, y) + 1e-12).item())
+                    psnr.append(psnr_metric(x, y).item())
 
         mse_val.append(sum(mse)/len(mse))
         mae_val.append(sum(mae)/len(mae))
@@ -238,7 +248,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         print('Average Train Loss: %.6f, Validation Loss: %.6f' %
               (losses_train[-1], losses_val[-1]))
-        print('Validation MSE: %.3f, MAE: %.3f, PSNR: %.3f, SSIM: %.3f' %
+        print('Validation MSE: %.6f, MAE: %.6f, PSNR: %.6f, SSIM: %.6f' %
               (mse_val[-1], mae_val[-1], psnr_val[-1], ssim_val[-1]))
         print('Best epochs for mse:%d, ssim:%d, psnr:%d, norm_average:%d' %
               (best_mse, best_ssim, best_psnr, best_avg))

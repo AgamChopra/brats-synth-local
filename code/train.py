@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on June 2023
 @author: Agamdeep Chopra
@@ -199,7 +198,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         print('Average Train Loss: %.6f, Validation Loss: %.6f' %
               (losses_train[-1], losses_val[-1]))
-        print('Validation MSE: %.3f, MAE: %.3f, PSNR: %.3f, SSIM: %.3f' %
+        print('Validation MSE: %.6f, MAE: %.6f, PSNR: %.6f, SSIM: %.6f' %
               (mse_val[-1], mae_val[-1], psnr_val[-1], ssim_val[-1]))
         print('Best epochs for mse:%d, ssim:%d, psnr:%d, norm_average:%d' %
               (best_mse, best_ssim, best_psnr, best_avg))
@@ -233,7 +232,6 @@ def validate(checkpoint_path, model_path, batch=1,
 
     with torch.no_grad():
         for eps in range(epochs):
-            # print('Epoch %d:' % (eps))
             for _ in trange(iterations):
                 x, mask = data.load_batch()
                 x, mask = x.to(device).float(), mask.to(device).float()
@@ -296,13 +294,13 @@ if __name__ == '__main__':
     checkpoint_path = '/gscratch/kurtlab/brats-local-synthesis/' if\
         HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
     model_path = 'baseline.pt'
-    fresh = True
-    epochs = 50
-    lr = 1E-3
+    fresh = False
+    epochs = 500
+    lr = 1E-4
     batch = 1
     device = 'cuda'
-    n = 1
-    dropout = 0.05
+    n = 2
+    dropout = 0
 
     trn(checkpoint_path, epochs=epochs, lr=lr,
         batch=batch, device=device, n=n,

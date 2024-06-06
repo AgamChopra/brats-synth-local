@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on June 2023
 @author: Agamdeep Chopra
@@ -235,4 +234,4 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
 
 
 if __name__ == '__main__':
-    test_model('cuda', B=1, n=64)
+    test_model('cpu', B=1, n=64)

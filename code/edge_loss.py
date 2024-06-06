@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Jul 10 2022
 Last Modified on Thu Apr 6 2023

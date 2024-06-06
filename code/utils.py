@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on June 2023
 @author: Agamdeep Chopra
