@@ -341,7 +341,7 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1,
 
 if __name__ == '__main__':
     HYAK = False
-    checkpoint_path = '/gscratch/kurtlab/brats-local-synthesis/' if\
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log' if\
         HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
     model_path = 'best_average.pt'
     critic_path = 'critic.pt'
