@@ -60,7 +60,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     lambdas = [0.1, 0.15, 0.6, 0.3]
 
     # dataloader
-    dataloader_paths = ['/gscratch/kurtlab/brats-local-synthesis/TrainingData/', '/gscratch/kurtlab/brats-local-synthesis/ValidationData/'] if HYAK else [
+    dataloader_paths = ['/gscratch/kurtlab/agam/data/brats-local-synthesis/TrainingData/', '/gscratch/kurtlab/agam/data/brats-local-synthesis/ValidationData/'] if HYAK else [
         '/home/agam/Desktop/brats_2024_local_impainting/TrainingData/', '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/']
     data = dataloader.DataLoader(batch=batch, augment=True,
                                  aug_thresh=0.05, workers=4, norm=True,
@@ -127,7 +127,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         # validation loop (after each epoch)
         neural_network.eval()
-        for _ in trange(iterations_val):
+        for _ in trange(3 * iterations_val):
             with torch.no_grad():
                 x, mask = data.load_batch()
                 x, mask = x.float().to(device), mask.float().to(device)
@@ -152,7 +152,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     losses_temp.append(sum(error).item())
                     mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
                     mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
-                    ssim.append(-torch.log10(1 - ssim_metric(x, y) + 1e-12).item())
+                    ssim.append(-torch.log10(1 -
+                                ssim_metric(x, y) + 1e-12).item())
                     psnr.append(psnr_metric(x, y).item())
 
         mse_val.append(sum(mse)/len(mse))
@@ -160,7 +161,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         ssim_val.append(sum(ssim)/len(ssim))
         psnr_val.append(sum(psnr)/len(psnr))
 
-        losses_val.append(sum(losses_temp)/iterations_val)
+        losses_val.append(sum(losses_temp)/len(losses_temp))
         losses_temp = []
         mse, mae, psnr, ssim = [], [], [], []
 
@@ -220,7 +221,7 @@ def validate(checkpoint_path, model_path, batch=1,
     model.load_state_dict(state_dict)
     model.eval()
 
-    dataloader_path = '/gscratch/kurtlab/brats-local-synthesis/ValidationData/' if HYAK else '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/'
+    dataloader_path = '/gscratch/kurtlab/agam/data/brats-local-synthesis/ValidationData/' if HYAK else '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/'
     data = dataloader.DataLoader(batch=batch, augment=False,
                                  workers=4, norm=True,
                                  path=dataloader_path)
@@ -291,9 +292,9 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1,
 
 if __name__ == '__main__':
     HYAK = False
-    checkpoint_path = '/gscratch/kurtlab/brats-local-synthesis/' if\
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log' if\
         HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
-    model_path = 'baseline.pt'
+    model_path = 'best_average.pt'
     fresh = False
     epochs = 500
     lr = 1E-4
@@ -302,10 +303,10 @@ if __name__ == '__main__':
     n = 2
     dropout = 0
 
-    trn(checkpoint_path, epochs=epochs, lr=lr,
-        batch=batch, device=device, n=n,
-        params=None if fresh else checkpoint_path + model_path,
-        dropout=dropout, HYAK=HYAK)
+    # trn(checkpoint_path, epochs=epochs, lr=lr,
+    #     batch=batch, device=device, n=n,
+    #     params=None if fresh else checkpoint_path + model_path,
+    #     dropout=dropout, HYAK=HYAK)
 
-    # validate(checkpoint_path, model_path=model_path, epochs=2,
-    #          dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK)
+    validate(checkpoint_path, model_path=model_path, epochs=2,
+             dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK)

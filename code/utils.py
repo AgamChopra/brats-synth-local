@@ -324,7 +324,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
         plt.ylabel('Metrics')
         plt.legend()
         if HYAK:
-            plt.savefig('/gscratch/kurtlab/brats-local-synthesis/plot0.png',
+            plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0.png',
                         dpi=dpi, transparent=True, bbox_inches='tight')
         else:
             plt.show()
@@ -340,7 +340,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plt.ylabel('Metrics')
     plt.legend()
     if HYAK:
-        plt.savefig('/gscratch/kurtlab/brats-local-synthesis/plot1.png',
+        plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot1.png',
                     dpi=dpi, transparent=True, bbox_inches='tight')
     else:
         plt.show()
@@ -357,7 +357,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plt.ylabel('Normalized Metric Score')
     plt.legend()
     if HYAK:
-        plt.savefig('/gscratch/kurtlab/brats-local-synthesis/plot2.png',
+        plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot2.png',
                     dpi=dpi, transparent=True, bbox_inches='tight')
     else:
         plt.show()
@@ -388,7 +388,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     axs[1, 1].legend()
     plt.tight_layout()
     if HYAK:
-        plt.savefig('/gscratch/kurtlab/brats-local-synthesis/plot3.png',
+        plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot3.png',
                     dpi=dpi, transparent=True, bbox_inches='tight')
     else:
         plt.show()
