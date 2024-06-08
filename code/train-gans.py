@@ -101,13 +101,16 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     # optimization loop
     for eps in range(epochs):
-        print('Epoch %d:' % (eps))
-
+        print(f'Epoch {eps}:')
         neural_network.train()
         critic.train()
 
         for j in trange(iterations):
             x, mask = data.load_batch()
+            if x is None or mask is None:
+                print(f"Batch {j} returned None values.")
+                continue
+
             x, mask = x.float().to(device), mask.float().to(device)
             whole_mask = (x > 0.).float().to(device)
 
@@ -115,7 +118,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             input_image = (x > 0) * ((mask < 0.5) * x)
             input_image = torch.cat((input_image, mask), dim=1)
 
-            if j+1 % 2 == 0:
+            if (j+1) % 2 == 0:
                 optimizer.zero_grad()
 
                 with autocast():
@@ -123,23 +126,21 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         neural_network(input_image, gans=True).float()
                     synthetic_masked_region = mask * y
 
-                    error = 10 * sum([efunc(known_masked_region,
-                                            synthetic_masked_region,
-                                            mask)
-                                      for efunc in criterion_masked])
-
-                    error += sum([lambdas[i] * criterion[i](
-                        x, y) for i in range(len(criterion))])
-
-                    error -= 0.1 * critic(torch.cat(
-                        (input_image, synthetic_masked_region),
-                        dim=1).float()).mean()
+                    error = 10 * \
+                        sum([efunc(known_masked_region, synthetic_masked_region, mask)
+                            for efunc in criterion_masked])
+                    error += sum([lambdas[i] * criterion[i](x, y)
+                                 for i in range(len(criterion))])
+                    error -= 0.1 * \
+                        critic(
+                            torch.cat((input_image, synthetic_masked_region), dim=1).float()).mean()
 
                 scaler.scale(error).backward()
                 scaler.step(optimizer)
                 scaler.update()
 
                 losses.append(error.item())
+                print(f"Batch {j}, Error: {error.item()}")
 
             else:
                 optimizerC.zero_grad()
@@ -166,11 +167,20 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 scaler.update()
 
                 critic_losses.append(error.item())
+                print(f"Batch {j}, Critic Error: {error.item()}")
 
-        losses_train.append(sum(losses)/len(losses))
+        if losses:
+            losses_train.append(sum(losses)/len(losses))
+        else:
+            print("No training losses recorded.")
+            losses_train.append(0)  # or some other default value
         losses = []
 
-        critic_losses_train.append(sum(critic_losses)/len(critic_losses))
+        if critic_losses:
+            critic_losses_train.append(sum(critic_losses)/len(critic_losses))
+        else:
+            print("No critic losses recorded.")
+            critic_losses_train.append(0)  # or some other default value
         critic_losses = []
 
         # validation loop (after each epoch)
@@ -197,11 +207,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     error += sum([lambdas[i] * criterion[i](
                         x, y) for i in range(len(criterion))])
 
-                    losses_temp.append(sum(error).item())
-                    mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
-                    mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
-                    ssim.append(-torch.log10(1 - ssim_metric(x, y) + 1e-12).item())
-                    psnr.append(psnr_metric(x, y).item())
+                losses_temp.append(error.item())
+                mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
+                mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
+                ssim.append(-torch.log10(1 -
+                            ssim_metric(x, y) + 1e-12).item())
+                psnr.append(psnr_metric(x, y).item())
 
         mse_val.append(sum(mse)/len(mse))
         mae_val.append(sum(mae)/len(mae))
@@ -357,7 +368,7 @@ if __name__ == '__main__':
     trn(checkpoint_path, epochs=epochs, lr=lr,
         batch=batch, device=device, n=n,
         params=[None, None] if fresh else [checkpoint_path +
-                                            model_path, checkpoint_path + critic_path],
+                                           model_path, checkpoint_path + critic_path],
         dropout=dropout, HYAK=HYAK)
 
     # validate(checkpoint_path, model_path=model_path, epochs=2,

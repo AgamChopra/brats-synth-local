@@ -149,12 +149,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     error += sum([lambdas[i] * criterion[i](
                         x, y) for i in range(len(criterion))])
 
-                    losses_temp.append(sum(error).item())
-                    mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
-                    mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
-                    ssim.append(-torch.log10(1 -
-                                ssim_metric(x, y) + 1e-12).item())
-                    psnr.append(psnr_metric(x, y).item())
+                losses_temp.append(error.item())
+                mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
+                mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
+                ssim.append(-torch.log10(1 -
+                                         ssim_metric(x, y) + 1e-12).item())
+                psnr.append(psnr_metric(x, y).item())
 
         mse_val.append(sum(mse)/len(mse))
         mae_val.append(sum(mae)/len(mae))
@@ -308,5 +308,5 @@ if __name__ == '__main__':
     #     params=None if fresh else checkpoint_path + model_path,
     #     dropout=dropout, HYAK=HYAK)
 
-    validate(checkpoint_path, model_path=model_path, epochs=2,
+    validate(checkpoint_path, model_path=model_path, epochs=10,
              dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK)
