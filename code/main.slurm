@@ -9,8 +9,8 @@
 #SBATCH --partition=gpu-a40
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
-#SBATCH --mem=16G
-#SBATCH --time=4-00:00:00
+#SBATCH --mem=32G
+#SBATCH --time=7-00:00:00
 
 #SBATCH --chdir=.
 #SBATCH --export=all
@@ -20,4 +20,4 @@
 source ~/.bashrc
 source activate agam_1
 
-python3 main.py
+python3 train-gans.py

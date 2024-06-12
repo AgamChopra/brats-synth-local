@@ -46,7 +46,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # model
     neural_network = models.Attention_UNetT(in_c=2, out_c=1, n=n,
                                             dropout_rate=dropout).to(device)
-    neural_network.freeze_encoder()
+    # neural_network.freeze_encoder()
     if model_path is not None:
         state_dict = torch.load(model_path, map_location=device)
         neural_network.load_state_dict(state_dict, strict=True)
@@ -66,10 +66,9 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     # toptimization criterion
     criterion_masked = [Mask_MSELoss(), Mask_L1Loss()]
-    criterion = [nn.MSELoss(), nn.L1Loss(),
-                 ssim_loss(win_size=3, win_sigma=0.1),
+    criterion = [ssim_loss(win_size=3, win_sigma=0.1),
                  GMELoss3D(device=device)]
-    lambdas = [0.1, 0.15, 0.6, 0.3]
+    lambdas = [0.5, 0.5]
 
     # dataloader
     dataloader_paths = ['/gscratch/kurtlab/agam/data/brats-local-synthesis/TrainingData/', '/gscratch/kurtlab/agam/data/brats-local-synthesis/ValidationData/'] if HYAK else [
@@ -126,21 +125,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         neural_network(input_image, gans=True).float()
                     synthetic_masked_region = mask * y
 
-                    error = 10 * \
-                        sum([efunc(known_masked_region, synthetic_masked_region, mask)
-                            for efunc in criterion_masked])
+                    error = sum([efunc(known_masked_region, synthetic_masked_region, mask)
+                                 for efunc in criterion_masked])
                     error += sum([lambdas[i] * criterion[i](x, y)
                                  for i in range(len(criterion))])
-                    error -= 0.1 * \
-                        critic(
-                            torch.cat((input_image, synthetic_masked_region), dim=1).float()).mean()
+                    error -= critic(torch.cat((input_image,
+                                    synthetic_masked_region), dim=1).float()).mean()
 
                 scaler.scale(error).backward()
                 scaler.step(optimizer)
                 scaler.update()
 
                 losses.append(error.item())
-                print(f"Batch {j}, Error: {error.item()}")
+                # print(f"Batch {j}, Error: {error.item()}")
 
             else:
                 optimizerC.zero_grad()
@@ -167,7 +164,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 scaler.update()
 
                 critic_losses.append(error.item())
-                print(f"Batch {j}, Critic Error: {error.item()}")
+                # print(f"Batch {j}, Critic Error: {error.item()}")
 
         if losses:
             losses_train.append(sum(losses)/len(losses))
@@ -351,18 +348,18 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1,
 
 
 if __name__ == '__main__':
-    HYAK = False
-    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log' if\
+    HYAK = True
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if\
         HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
     model_path = 'best_average.pt'
     critic_path = 'critic.pt'
     params = [model_path, critic_path]
-    fresh = False
-    epochs = 500
-    lr = 1E-4
+    fresh = True
+    epochs = 1000
+    lr = 1E-3
     batch = 1
     device = 'cuda'
-    n = 2
+    n = 1
     dropout = 0
 
     trn(checkpoint_path, epochs=epochs, lr=lr,

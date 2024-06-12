@@ -193,22 +193,22 @@ class Attention_UNetT(nn.Module):
 
 
 class Critic(nn.Module):  # (N,3,128,128) -> (N,1)
-    def __init__(self, in_c=1, fact=2):
+    def __init__(self, in_c=1, fact=1):
         super(Critic, self).__init__()
         self.c = fact
 
         self.E = nn.Sequential(nn.utils.spectral_norm(
-            nn.Conv3d(in_c, self.c * 2, kernel_size=5, stride=5)),
+            nn.Conv3d(in_c, self.c * 16, kernel_size=5, stride=5)),
             nn.LeakyReLU(0.2, inplace=False),
             nn.utils.spectral_norm(
-                nn.Conv3d(self.c * 2, self.c * 4, kernel_size=5, stride=5)),
+                nn.Conv3d(self.c * 16, self.c * 32, kernel_size=5, stride=5)),
             nn.LeakyReLU(0.2, inplace=False),
             nn.utils.spectral_norm(
-                nn.Conv3d(self.c * 4, self.c * 8, kernel_size=5, stride=5)),
+                nn.Conv3d(self.c * 32, self.c * 64, kernel_size=5, stride=5)),
             nn.LeakyReLU(0.2, inplace=False)
         )
 
-        self.fc = nn.Sequential(nn.Linear(self.c * 8, 1))
+        self.fc = nn.Sequential(nn.Linear(self.c * 64, 1))
 
     def forward(self, x):
         target_shape = x.shape[2:]

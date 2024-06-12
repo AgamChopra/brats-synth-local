@@ -291,8 +291,8 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1,
 
 
 if __name__ == '__main__':
-    HYAK = False
-    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log' if\
+    HYAK = True
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if\
         HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
     model_path = 'best_average.pt'
     fresh = False
@@ -300,7 +300,7 @@ if __name__ == '__main__':
     lr = 1E-4
     batch = 1
     device = 'cuda'
-    n = 2
+    n = 1
     dropout = 0
 
     # trn(checkpoint_path, epochs=epochs, lr=lr,

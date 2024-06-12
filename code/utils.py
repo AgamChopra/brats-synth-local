@@ -321,7 +321,20 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
         plt.plot(norm(losses_val), label='Generator Validation Loss')
         plt.title('Normalized Loss Curve')
         plt.xlabel('Epoch')
-        plt.ylabel('Metrics')
+        plt.ylabel('Norm Error')
+        plt.legend()
+        if HYAK:
+            plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0.png',
+                        dpi=dpi, transparent=True, bbox_inches='tight')
+        else:
+            plt.show()
+
+        plt.figure(dpi=dpi)
+        plt.plot(critic_losses_train, label='Critic Training Loss')
+        plt.plot(losses_train, label='Generator Training Loss')
+        plt.title('Loss Curve')
+        plt.xlabel('Epoch')
+        plt.ylabel('Error')
         plt.legend()
         if HYAK:
             plt.savefig('/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0.png',
