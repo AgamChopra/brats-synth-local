@@ -1,691 +1,146 @@
 cuda
-/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/code/critic.pt not found!
 Epoch 0:
-Average Train Loss: 0.249195, Validation Loss: 0.253428
-Validation MSE: 3.551357, MAE: 2.341782, PSNR: 17.756784, SSIM: 4.747440
+Average Train Loss: -27.587957, Validation Loss: 1.458921
+Validation MSE: 2.403325, MAE: 1.683156, PSNR: 12.016627, SSIM: 3.295680
 Best epochs for mse:0, ssim:0, psnr:0, norm_average:0
 Epoch 1:
-Average Train Loss: 0.244485, Validation Loss: 0.255717
-Validation MSE: 3.606491, MAE: 2.370705, PSNR: 18.032457, SSIM: 4.811585
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -23.781865, Validation Loss: 1.485823
+Validation MSE: 2.404505, MAE: 1.681896, PSNR: 12.022526, SSIM: 3.295015
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 2:
-Average Train Loss: 0.247888, Validation Loss: 0.254969
-Validation MSE: 3.533998, MAE: 2.328400, PSNR: 17.669990, SSIM: 4.656236
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -50.485724, Validation Loss: 2.320813
+Validation MSE: 2.010046, MAE: 1.480067, PSNR: 10.050230, SSIM: 2.858127
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 3:
-Average Train Loss: 0.249411, Validation Loss: 0.271072
-Validation MSE: 3.418876, MAE: 2.217828, PSNR: 17.094378, SSIM: 4.534538
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -21.022987, Validation Loss: 2.716443
+Validation MSE: 1.931452, MAE: 1.421570, PSNR: 9.657259, SSIM: 2.791988
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 4:
-Average Train Loss: 0.243563, Validation Loss: 0.261749
-Validation MSE: 3.542234, MAE: 2.315853, PSNR: 17.711168, SSIM: 4.722267
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -24.646925, Validation Loss: 1.296683
+Validation MSE: 2.353848, MAE: 1.656532, PSNR: 11.769238, SSIM: 3.239236
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 5:
-Average Train Loss: 0.220308, Validation Loss: 0.245191
-Validation MSE: 3.551286, MAE: 2.332342, PSNR: 17.756431, SSIM: 4.671358
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -50.841548, Validation Loss: 2.913806
+Validation MSE: 1.799571, MAE: 1.374880, PSNR: 8.997856, SSIM: 2.634883
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 6:
-Average Train Loss: 0.231757, Validation Loss: 0.242536
-Validation MSE: 3.565405, MAE: 2.351635, PSNR: 17.827026, SSIM: 4.722066
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -121.100609, Validation Loss: 1.530115
+Validation MSE: 2.209970, MAE: 1.554079, PSNR: 11.049849, SSIM: 3.052673
+Best epochs for mse:1, ssim:0, psnr:1, norm_average:1
 Epoch 7:
-Average Train Loss: 0.222280, Validation Loss: 0.253986
-Validation MSE: 3.547397, MAE: 2.346324, PSNR: 17.736987, SSIM: 4.724014
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -128.358460, Validation Loss: 1.320068
+Validation MSE: 2.472224, MAE: 1.707389, PSNR: 12.361119, SSIM: 3.360483
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 8:
-Average Train Loss: 0.233820, Validation Loss: 0.249457
-Validation MSE: 3.557362, MAE: 2.325139, PSNR: 17.786809, SSIM: 4.678415
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -144.786967, Validation Loss: 2.024721
+Validation MSE: 2.085116, MAE: 1.511109, PSNR: 10.425580, SSIM: 2.922203
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 9:
-Average Train Loss: 0.205753, Validation Loss: 0.247989
-Validation MSE: 3.593539, MAE: 2.365289, PSNR: 17.967694, SSIM: 4.783839
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -82.186112, Validation Loss: 1.452978
+Validation MSE: 2.196820, MAE: 1.563192, PSNR: 10.984098, SSIM: 3.033715
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 10:
-Average Train Loss: 0.224747, Validation Loss: 0.235011
-Validation MSE: 3.578121, MAE: 2.357976, PSNR: 17.890606, SSIM: 4.793708
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -98.986607, Validation Loss: 1.634130
+Validation MSE: 1.950524, MAE: 1.459446, PSNR: 9.752620, SSIM: 2.755523
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 11:
-Average Train Loss: 0.204925, Validation Loss: 0.252401
-Validation MSE: 3.581517, MAE: 2.347200, PSNR: 17.907585, SSIM: 4.761512
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -111.177127, Validation Loss: 1.536102
+Validation MSE: 2.069239, MAE: 1.530880, PSNR: 10.346195, SSIM: 2.882733
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 12:
-Average Train Loss: 0.207766, Validation Loss: 0.231339
-Validation MSE: 3.598541, MAE: 2.368963, PSNR: 17.992704, SSIM: 4.785519
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -122.263713, Validation Loss: 1.635387
+Validation MSE: 1.970303, MAE: 1.488738, PSNR: 9.851516, SSIM: 2.775155
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 13:
-Average Train Loss: 0.228836, Validation Loss: 0.264954
-Validation MSE: 3.550961, MAE: 2.331256, PSNR: 17.754803, SSIM: 4.697190
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -118.447002, Validation Loss: 1.272605
+Validation MSE: 2.222241, MAE: 1.610843, PSNR: 11.111204, SSIM: 3.061982
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 14:
-Average Train Loss: 0.240864, Validation Loss: 0.250345
-Validation MSE: 3.568931, MAE: 2.339320, PSNR: 17.844654, SSIM: 4.743510
-Best epochs for mse:1, ssim:1, psnr:1, norm_average:1
+Average Train Loss: -132.167423, Validation Loss: 1.515953
+Validation MSE: 2.301951, MAE: 1.629089, PSNR: 11.509755, SSIM: 3.141843
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 15:
-Average Train Loss: 0.241400, Validation Loss: 0.242836
-Validation MSE: 3.611227, MAE: 2.375905, PSNR: 18.056134, SSIM: 4.819839
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -135.485524, Validation Loss: 1.001331
+Validation MSE: 2.451528, MAE: 1.716547, PSNR: 12.257640, SSIM: 3.348377
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 16:
-Average Train Loss: 0.229438, Validation Loss: 0.253753
-Validation MSE: 3.555134, MAE: 2.330623, PSNR: 17.775668, SSIM: 4.708316
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -81.582634, Validation Loss: 2.749699
+Validation MSE: 2.240690, MAE: 1.629459, PSNR: 11.203450, SSIM: 3.126774
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 17:
-Average Train Loss: 0.228120, Validation Loss: 0.254015
-Validation MSE: 3.600071, MAE: 2.373279, PSNR: 18.000357, SSIM: 4.786319
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -61.565243, Validation Loss: 1.555324
+Validation MSE: 2.117881, MAE: 1.571084, PSNR: 10.589404, SSIM: 2.975423
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 18:
-Average Train Loss: 0.236243, Validation Loss: 0.250432
-Validation MSE: 3.554539, MAE: 2.347866, PSNR: 17.772694, SSIM: 4.722558
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -76.869226, Validation Loss: 1.210383
+Validation MSE: 2.401896, MAE: 1.687759, PSNR: 12.009480, SSIM: 3.294152
+Best epochs for mse:7, ssim:7, psnr:7, norm_average:7
 Epoch 19:
-Average Train Loss: 0.234167, Validation Loss: 0.257891
-Validation MSE: 3.570350, MAE: 2.348042, PSNR: 17.851750, SSIM: 4.754914
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -73.544172, Validation Loss: 0.954337
+Validation MSE: 2.587088, MAE: 1.762393, PSNR: 12.935438, SSIM: 3.493899
+Best epochs for mse:19, ssim:19, psnr:19, norm_average:19
 Epoch 20:
-Average Train Loss: 0.236165, Validation Loss: 0.244896
-Validation MSE: 3.569265, MAE: 2.353868, PSNR: 17.846327, SSIM: 4.760377
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -82.446697, Validation Loss: 1.121401
+Validation MSE: 2.471181, MAE: 1.734719, PSNR: 12.355904, SSIM: 3.388863
+Best epochs for mse:19, ssim:19, psnr:19, norm_average:19
 Epoch 21:
-Average Train Loss: 0.187087, Validation Loss: 0.234326
-Validation MSE: 3.578014, MAE: 2.361029, PSNR: 17.890070, SSIM: 4.781052
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -80.175472, Validation Loss: 1.058662
+Validation MSE: 2.529815, MAE: 1.761007, PSNR: 12.649077, SSIM: 3.436055
+Best epochs for mse:19, ssim:19, psnr:19, norm_average:19
 Epoch 22:
-Average Train Loss: 0.137654, Validation Loss: 0.246761
-Validation MSE: 3.549295, MAE: 2.330321, PSNR: 17.746477, SSIM: 4.670920
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -79.208462, Validation Loss: 0.907426
+Validation MSE: 2.671619, MAE: 1.818367, PSNR: 13.358096, SSIM: 3.583357
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 23:
-Average Train Loss: 0.202206, Validation Loss: 0.241413
-Validation MSE: 3.589291, MAE: 2.369411, PSNR: 17.946455, SSIM: 4.791191
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -90.580472, Validation Loss: 1.383417
+Validation MSE: 2.315577, MAE: 1.614820, PSNR: 11.577883, SSIM: 3.195096
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 24:
-Average Train Loss: 0.238347, Validation Loss: 0.248986
-Validation MSE: 3.562875, MAE: 2.348132, PSNR: 17.814374, SSIM: 4.744922
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -78.723871, Validation Loss: 1.312312
+Validation MSE: 2.269830, MAE: 1.616777, PSNR: 11.349150, SSIM: 3.126038
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 25:
-Average Train Loss: 0.203451, Validation Loss: 0.244976
-Validation MSE: 3.597989, MAE: 2.363025, PSNR: 17.989945, SSIM: 4.804164
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -94.033941, Validation Loss: 0.894997
+Validation MSE: 2.662648, MAE: 1.806242, PSNR: 13.313238, SSIM: 3.571026
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 26:
-Average Train Loss: 0.111956, Validation Loss: 0.251112
-Validation MSE: 3.606254, MAE: 2.373070, PSNR: 18.031268, SSIM: 4.787887
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -81.285549, Validation Loss: 0.987834
+Validation MSE: 2.487181, MAE: 1.740317, PSNR: 12.435906, SSIM: 3.367993
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 27:
-Average Train Loss: 0.115836, Validation Loss: 0.243747
-Validation MSE: 3.600377, MAE: 2.369185, PSNR: 18.001887, SSIM: 4.772815
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -77.200538, Validation Loss: 1.106943
+Validation MSE: 2.564650, MAE: 1.754129, PSNR: 12.823250, SSIM: 3.445717
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 28:
-Average Train Loss: 0.103647, Validation Loss: 0.267499
-Validation MSE: 3.547051, MAE: 2.328150, PSNR: 17.735256, SSIM: 4.672694
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -83.904351, Validation Loss: 1.014545
+Validation MSE: 2.532892, MAE: 1.741884, PSNR: 12.664461, SSIM: 3.419546
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 29:
-Average Train Loss: 0.109668, Validation Loss: 0.233546
-Validation MSE: 3.600025, MAE: 2.368539, PSNR: 18.000122, SSIM: 4.818378
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -96.245106, Validation Loss: 0.965053
+Validation MSE: 2.613314, MAE: 1.793301, PSNR: 13.066570, SSIM: 3.499212
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 30:
-Average Train Loss: 0.151187, Validation Loss: 0.249784
-Validation MSE: 3.607684, MAE: 2.378966, PSNR: 18.038419, SSIM: 4.802587
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -98.492837, Validation Loss: 0.908779
+Validation MSE: 2.661519, MAE: 1.816886, PSNR: 13.307597, SSIM: 3.567385
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 31:
-Average Train Loss: 0.159433, Validation Loss: 0.241359
-Validation MSE: 3.608256, MAE: 2.375973, PSNR: 18.041278, SSIM: 4.802594
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -85.850280, Validation Loss: 0.965425
+Validation MSE: 2.658499, MAE: 1.804592, PSNR: 13.292496, SSIM: 3.552596
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 32:
-Average Train Loss: 0.232589, Validation Loss: 0.225757
-Validation MSE: 3.595730, MAE: 2.374162, PSNR: 17.978649, SSIM: 4.797791
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -94.727460, Validation Loss: 1.042623
+Validation MSE: 2.494501, MAE: 1.711095, PSNR: 12.472503, SSIM: 3.375798
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 33:
-Average Train Loss: 0.204547, Validation Loss: 0.245442
-Validation MSE: 3.604635, MAE: 2.370655, PSNR: 18.023174, SSIM: 4.793626
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -99.635184, Validation Loss: 0.887818
+Validation MSE: 2.649899, MAE: 1.805543, PSNR: 13.249497, SSIM: 3.555641
+Best epochs for mse:22, ssim:22, psnr:22, norm_average:22
 Epoch 34:
-Average Train Loss: 0.217688, Validation Loss: 0.240067
-Validation MSE: 3.586610, MAE: 2.371322, PSNR: 17.933051, SSIM: 4.795515
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -105.231781, Validation Loss: 0.746237
+Validation MSE: 2.760086, MAE: 1.857432, PSNR: 13.800428, SSIM: 3.667550
+Best epochs for mse:34, ssim:34, psnr:34, norm_average:34
 Epoch 35:
-Average Train Loss: 0.268298, Validation Loss: 0.243770
-Validation MSE: 3.572028, MAE: 2.349420, PSNR: 17.860141, SSIM: 4.761691
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
+Average Train Loss: -131.546721, Validation Loss: 0.747474
+Validation MSE: 2.651644, MAE: 1.802130, PSNR: 13.258218, SSIM: 3.533141
+Best epochs for mse:34, ssim:34, psnr:34, norm_average:34
 Epoch 36:
-Average Train Loss: 0.113836, Validation Loss: 0.238790
-Validation MSE: 3.601957, MAE: 2.372035, PSNR: 18.009784, SSIM: 4.781441
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 37:
-Average Train Loss: 0.097527, Validation Loss: 0.242139
-Validation MSE: 3.593300, MAE: 2.371489, PSNR: 17.966501, SSIM: 4.783244
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 38:
-Average Train Loss: 0.075891, Validation Loss: 0.258104
-Validation MSE: 3.602842, MAE: 2.368145, PSNR: 18.014212, SSIM: 4.804126
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 39:
-Average Train Loss: 0.115076, Validation Loss: 0.249465
-Validation MSE: 3.598261, MAE: 2.371688, PSNR: 17.991303, SSIM: 4.805278
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 40:
-Average Train Loss: 0.040259, Validation Loss: 0.242605
-Validation MSE: 3.599261, MAE: 2.368474, PSNR: 17.996302, SSIM: 4.807424
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 41:
-Average Train Loss: 0.066571, Validation Loss: 0.247596
-Validation MSE: 3.572025, MAE: 2.357068, PSNR: 17.860124, SSIM: 4.738937
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 42:
-Average Train Loss: -0.020690, Validation Loss: 0.243173
-Validation MSE: 3.583993, MAE: 2.363712, PSNR: 17.919964, SSIM: 4.798894
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 43:
-Average Train Loss: 0.076690, Validation Loss: 0.249329
-Validation MSE: 3.580354, MAE: 2.355016, PSNR: 17.901768, SSIM: 4.766850
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 44:
-Average Train Loss: 0.123421, Validation Loss: 0.244420
-Validation MSE: 3.573962, MAE: 2.352328, PSNR: 17.869809, SSIM: 4.738630
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 45:
-Average Train Loss: -0.066175, Validation Loss: 0.230292
-Validation MSE: 3.599032, MAE: 2.370429, PSNR: 17.995162, SSIM: 4.790597
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 46:
-Average Train Loss: -0.153441, Validation Loss: 0.246604
-Validation MSE: 3.592106, MAE: 2.361562, PSNR: 17.960531, SSIM: 4.789013
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 47:
-Average Train Loss: -0.312351, Validation Loss: 0.248339
-Validation MSE: 3.599671, MAE: 2.365445, PSNR: 17.998353, SSIM: 4.741680
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 48:
-Average Train Loss: -0.322545, Validation Loss: 0.249651
-Validation MSE: 3.608071, MAE: 2.368639, PSNR: 18.040356, SSIM: 4.784776
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 49:
-Average Train Loss: -0.151986, Validation Loss: 0.240267
-Validation MSE: 3.609145, MAE: 2.372283, PSNR: 18.045725, SSIM: 4.790364
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 50:
-Average Train Loss: -0.029079, Validation Loss: 0.236351
-Validation MSE: 3.604389, MAE: 2.371174, PSNR: 18.021944, SSIM: 4.781341
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 51:
-Average Train Loss: -0.145750, Validation Loss: 0.246177
-Validation MSE: 3.601160, MAE: 2.362682, PSNR: 18.005801, SSIM: 4.790575
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 52:
-Average Train Loss: -0.108126, Validation Loss: 0.259735
-Validation MSE: 3.528945, MAE: 2.299349, PSNR: 17.644725, SSIM: 4.663694
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 53:
-Average Train Loss: -0.104671, Validation Loss: 0.248310
-Validation MSE: 3.595432, MAE: 2.368974, PSNR: 17.977161, SSIM: 4.772689
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 54:
-Average Train Loss: 0.051794, Validation Loss: 0.241859
-Validation MSE: 3.581073, MAE: 2.357535, PSNR: 17.905362, SSIM: 4.784439
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 55:
-Average Train Loss: 0.215384, Validation Loss: 0.264660
-Validation MSE: 3.608489, MAE: 2.367273, PSNR: 18.042443, SSIM: 4.799802
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 56:
-Average Train Loss: 0.261799, Validation Loss: 0.233519
-Validation MSE: 3.577072, MAE: 2.344283, PSNR: 17.885359, SSIM: 4.739507
-Best epochs for mse:15, ssim:15, psnr:15, norm_average:15
-Epoch 57:
-Average Train Loss: 0.165853, Validation Loss: 0.234714
-Validation MSE: 3.622815, MAE: 2.375342, PSNR: 18.114074, SSIM: 4.816812
-Best epochs for mse:57, ssim:15, psnr:57, norm_average:57
-Epoch 58:
-Average Train Loss: 0.038302, Validation Loss: 0.247632
-Validation MSE: 3.552385, MAE: 2.333128, PSNR: 17.761927, SSIM: 4.671602
-Best epochs for mse:57, ssim:15, psnr:57, norm_average:57
-Epoch 59:
-Average Train Loss: 0.180450, Validation Loss: 0.246391
-Validation MSE: 3.577154, MAE: 2.347440, PSNR: 17.885772, SSIM: 4.728023
-Best epochs for mse:57, ssim:15, psnr:57, norm_average:57
-Epoch 60:
-Average Train Loss: 0.106848, Validation Loss: 0.234206
-Validation MSE: 3.624714, MAE: 2.386505, PSNR: 18.123572, SSIM: 4.815005
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 61:
-Average Train Loss: 0.031041, Validation Loss: 0.239041
-Validation MSE: 3.609937, MAE: 2.382340, PSNR: 18.049685, SSIM: 4.819164
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 62:
-Average Train Loss: -0.135813, Validation Loss: 0.246138
-Validation MSE: 3.607963, MAE: 2.380293, PSNR: 18.039815, SSIM: 4.795376
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 63:
-Average Train Loss: -0.128019, Validation Loss: 0.255913
-Validation MSE: 3.605417, MAE: 2.376835, PSNR: 18.027087, SSIM: 4.779008
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 64:
-Average Train Loss: -0.026749, Validation Loss: 0.252129
-Validation MSE: 3.587873, MAE: 2.355976, PSNR: 17.939363, SSIM: 4.783319
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 65:
-Average Train Loss: -0.065538, Validation Loss: 0.249264
-Validation MSE: 3.582524, MAE: 2.356968, PSNR: 17.912619, SSIM: 4.767408
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 66:
-Average Train Loss: 0.062499, Validation Loss: 0.240790
-Validation MSE: 3.556364, MAE: 2.335944, PSNR: 17.781820, SSIM: 4.724462
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 67:
-Average Train Loss: -0.059142, Validation Loss: 0.263870
-Validation MSE: 3.568703, MAE: 2.345681, PSNR: 17.843517, SSIM: 4.738863
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 68:
-Average Train Loss: -0.098915, Validation Loss: 0.235528
-Validation MSE: 3.571520, MAE: 2.353120, PSNR: 17.857600, SSIM: 4.729461
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 69:
-Average Train Loss: -0.084405, Validation Loss: 0.235786
-Validation MSE: 3.598360, MAE: 2.366843, PSNR: 17.991799, SSIM: 4.810512
-Best epochs for mse:60, ssim:15, psnr:60, norm_average:60
-Epoch 70:
-Average Train Loss: 0.025089, Validation Loss: 0.245565
-Validation MSE: 3.625524, MAE: 2.385266, PSNR: 18.127622, SSIM: 4.825791
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 71:
-Average Train Loss: 0.100404, Validation Loss: 0.243977
-Validation MSE: 3.605431, MAE: 2.377587, PSNR: 18.027154, SSIM: 4.814515
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 72:
-Average Train Loss: 0.002679, Validation Loss: 0.234549
-Validation MSE: 3.580055, MAE: 2.344910, PSNR: 17.900274, SSIM: 4.711297
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 73:
-Average Train Loss: -0.092322, Validation Loss: 0.242714
-Validation MSE: 3.592413, MAE: 2.354944, PSNR: 17.962066, SSIM: 4.767844
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 74:
-Average Train Loss: -0.207272, Validation Loss: 0.250341
-Validation MSE: 3.597104, MAE: 2.364450, PSNR: 17.985519, SSIM: 4.800959
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 75:
-Average Train Loss: -0.155068, Validation Loss: 0.243583
-Validation MSE: 3.592238, MAE: 2.369977, PSNR: 17.961191, SSIM: 4.792062
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 76:
-Average Train Loss: -0.063924, Validation Loss: 0.267812
-Validation MSE: 3.554696, MAE: 2.342335, PSNR: 17.773482, SSIM: 4.715717
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 77:
-Average Train Loss: -0.084813, Validation Loss: 0.247446
-Validation MSE: 3.568203, MAE: 2.334699, PSNR: 17.841016, SSIM: 4.690129
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 78:
-Average Train Loss: -0.092813, Validation Loss: 0.248595
-Validation MSE: 3.589363, MAE: 2.370455, PSNR: 17.946813, SSIM: 4.774988
-Best epochs for mse:70, ssim:70, psnr:70, norm_average:70
-Epoch 79:
-Average Train Loss: -0.146675, Validation Loss: 0.234786
-Validation MSE: 3.624604, MAE: 2.387074, PSNR: 18.123021, SSIM: 4.830533
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 80:
-Average Train Loss: -0.173189, Validation Loss: 0.223717
-Validation MSE: 3.581862, MAE: 2.362410, PSNR: 17.909312, SSIM: 4.774356
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 81:
-Average Train Loss: -0.152383, Validation Loss: 0.249447
-Validation MSE: 3.608988, MAE: 2.378800, PSNR: 18.044938, SSIM: 4.802030
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 82:
-Average Train Loss: -0.116009, Validation Loss: 0.248276
-Validation MSE: 3.570448, MAE: 2.345035, PSNR: 17.852239, SSIM: 4.737214
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 83:
-Average Train Loss: -0.002646, Validation Loss: 0.259244
-Validation MSE: 3.553652, MAE: 2.334687, PSNR: 17.768258, SSIM: 4.675661
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 84:
-Average Train Loss: -0.027348, Validation Loss: 0.240336
-Validation MSE: 3.603803, MAE: 2.376556, PSNR: 18.019013, SSIM: 4.798841
-Best epochs for mse:70, ssim:79, psnr:70, norm_average:79
-Epoch 85:
-Average Train Loss: -0.035365, Validation Loss: 0.239233
-Validation MSE: 3.616054, MAE: 2.382704, PSNR: 18.080272, SSIM: 4.832698
-Best epochs for mse:70, ssim:85, psnr:70, norm_average:79
-Epoch 86:
-Average Train Loss: -0.001696, Validation Loss: 0.251687
-Validation MSE: 3.605613, MAE: 2.373831, PSNR: 18.028066, SSIM: 4.815632
-Best epochs for mse:70, ssim:85, psnr:70, norm_average:79
-Epoch 87:
-Average Train Loss: -0.128408, Validation Loss: 0.236020
-Validation MSE: 3.617679, MAE: 2.384465, PSNR: 18.088396, SSIM: 4.825614
-Best epochs for mse:70, ssim:85, psnr:70, norm_average:79
-Epoch 88:
-Average Train Loss: 0.023609, Validation Loss: 0.226843
-Validation MSE: 3.591059, MAE: 2.370451, PSNR: 17.955293, SSIM: 4.807153
-Best epochs for mse:70, ssim:85, psnr:70, norm_average:79
-Epoch 89:
-Average Train Loss: -0.030906, Validation Loss: 0.246137
-Validation MSE: 3.587219, MAE: 2.350950, PSNR: 17.936097, SSIM: 4.742006
-Best epochs for mse:70, ssim:85, psnr:70, norm_average:79
-Epoch 90:
-Average Train Loss: -0.096467, Validation Loss: 0.229170
-Validation MSE: 3.633798, MAE: 2.389237, PSNR: 18.168990, SSIM: 4.843311
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 91:
-Average Train Loss: -0.096389, Validation Loss: 0.238271
-Validation MSE: 3.608015, MAE: 2.376806, PSNR: 18.040075, SSIM: 4.809230
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 92:
-Average Train Loss: -0.103098, Validation Loss: 0.246397
-Validation MSE: 3.604928, MAE: 2.376618, PSNR: 18.024641, SSIM: 4.795793
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 93:
-Average Train Loss: 0.009688, Validation Loss: 0.241320
-Validation MSE: 3.604360, MAE: 2.370199, PSNR: 18.021798, SSIM: 4.761327
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 94:
-Average Train Loss: -0.034534, Validation Loss: 0.244586
-Validation MSE: 3.622321, MAE: 2.385529, PSNR: 18.111607, SSIM: 4.806486
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 95:
-Average Train Loss: -0.130460, Validation Loss: 0.232140
-Validation MSE: 3.609848, MAE: 2.371526, PSNR: 18.049240, SSIM: 4.791330
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 96:
-Average Train Loss: -0.130693, Validation Loss: 0.234503
-Validation MSE: 3.603849, MAE: 2.373886, PSNR: 18.019246, SSIM: 4.806580
-Best epochs for mse:90, ssim:90, psnr:90, norm_average:90
-Epoch 97:
-Average Train Loss: -0.262816, Validation Loss: 0.221696
-Validation MSE: 3.640032, MAE: 2.394389, PSNR: 18.200158, SSIM: 4.857201
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 98:
-Average Train Loss: -0.227227, Validation Loss: 0.239155
-Validation MSE: 3.586429, MAE: 2.369886, PSNR: 17.932144, SSIM: 4.765108
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 99:
-Average Train Loss: -0.343259, Validation Loss: 0.239484
-Validation MSE: 3.624523, MAE: 2.384404, PSNR: 18.122616, SSIM: 4.834207
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 100:
-Average Train Loss: -0.316913, Validation Loss: 0.244602
-Validation MSE: 3.538184, MAE: 2.317496, PSNR: 17.690922, SSIM: 4.691981
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 101:
-Average Train Loss: -0.275293, Validation Loss: 0.221520
-Validation MSE: 3.600277, MAE: 2.361817, PSNR: 18.001383, SSIM: 4.762132
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 102:
-Average Train Loss: -0.281749, Validation Loss: 0.273954
-Validation MSE: 3.541707, MAE: 2.343821, PSNR: 17.708535, SSIM: 4.698688
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 103:
-Average Train Loss: -0.311360, Validation Loss: 0.219652
-Validation MSE: 3.615133, MAE: 2.379549, PSNR: 18.075663, SSIM: 4.817669
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 104:
-Average Train Loss: -0.297767, Validation Loss: 0.232532
-Validation MSE: 3.624918, MAE: 2.394126, PSNR: 18.124590, SSIM: 4.821435
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 105:
-Average Train Loss: -0.280166, Validation Loss: 0.237805
-Validation MSE: 3.621664, MAE: 2.388994, PSNR: 18.108320, SSIM: 4.795676
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 106:
-Average Train Loss: -0.167277, Validation Loss: 0.235367
-Validation MSE: 3.609057, MAE: 2.380619, PSNR: 18.045284, SSIM: 4.793463
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 107:
-Average Train Loss: -0.105077, Validation Loss: 0.244741
-Validation MSE: 3.615933, MAE: 2.388634, PSNR: 18.079666, SSIM: 4.796565
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 108:
-Average Train Loss: -0.087741, Validation Loss: 0.242313
-Validation MSE: 3.531336, MAE: 2.299323, PSNR: 17.656680, SSIM: 4.650453
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 109:
-Average Train Loss: -0.137427, Validation Loss: 0.239770
-Validation MSE: 3.608248, MAE: 2.376739, PSNR: 18.041242, SSIM: 4.811124
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 110:
-Average Train Loss: -0.132136, Validation Loss: 0.257906
-Validation MSE: 3.589771, MAE: 2.354956, PSNR: 17.948852, SSIM: 4.749168
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 111:
-Average Train Loss: -0.181168, Validation Loss: 0.230257
-Validation MSE: 3.626389, MAE: 2.393583, PSNR: 18.131943, SSIM: 4.833038
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 112:
-Average Train Loss: -0.233116, Validation Loss: 0.262969
-Validation MSE: 3.591866, MAE: 2.358915, PSNR: 17.959330, SSIM: 4.758892
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 113:
-Average Train Loss: -0.162271, Validation Loss: 0.246686
-Validation MSE: 3.600536, MAE: 2.370566, PSNR: 18.002678, SSIM: 4.786794
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 114:
-Average Train Loss: -0.079801, Validation Loss: 0.233259
-Validation MSE: 3.603706, MAE: 2.369098, PSNR: 18.018527, SSIM: 4.762601
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 115:
-Average Train Loss: 0.025672, Validation Loss: 0.247917
-Validation MSE: 3.602555, MAE: 2.375272, PSNR: 18.012772, SSIM: 4.802011
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 116:
-Average Train Loss: 0.019475, Validation Loss: 0.230605
-Validation MSE: 3.605524, MAE: 2.376573, PSNR: 18.027619, SSIM: 4.813264
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 117:
-Average Train Loss: -0.027474, Validation Loss: 0.246508
-Validation MSE: 3.589273, MAE: 2.370809, PSNR: 17.946367, SSIM: 4.786264
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 118:
-Average Train Loss: -0.141051, Validation Loss: 0.245080
-Validation MSE: 3.635500, MAE: 2.394907, PSNR: 18.177499, SSIM: 4.838998
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 119:
-Average Train Loss: -0.128056, Validation Loss: 0.242499
-Validation MSE: 3.594108, MAE: 2.368363, PSNR: 17.970541, SSIM: 4.771445
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 120:
-Average Train Loss: -0.023772, Validation Loss: 0.224385
-Validation MSE: 3.607743, MAE: 2.380171, PSNR: 18.038713, SSIM: 4.804605
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 121:
-Average Train Loss: 0.100042, Validation Loss: 0.253032
-Validation MSE: 3.625284, MAE: 2.390591, PSNR: 18.126420, SSIM: 4.831417
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 122:
-Average Train Loss: 0.064688, Validation Loss: 0.231799
-Validation MSE: 3.560291, MAE: 2.335172, PSNR: 17.801453, SSIM: 4.658573
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 123:
-Average Train Loss: -0.026812, Validation Loss: 0.241084
-Validation MSE: 3.596058, MAE: 2.371865, PSNR: 17.980288, SSIM: 4.786814
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 124:
-Average Train Loss: -0.106008, Validation Loss: 0.238079
-Validation MSE: 3.635747, MAE: 2.394707, PSNR: 18.178732, SSIM: 4.843418
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 125:
-Average Train Loss: -0.139136, Validation Loss: 0.239034
-Validation MSE: 3.610317, MAE: 2.372733, PSNR: 18.051582, SSIM: 4.777468
-Best epochs for mse:97, ssim:97, psnr:97, norm_average:97
-Epoch 126:
-Average Train Loss: -0.051099, Validation Loss: 0.238288
-Validation MSE: 3.640054, MAE: 2.401266, PSNR: 18.200270, SSIM: 4.848019
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 127:
-Average Train Loss: -0.242620, Validation Loss: 0.230883
-Validation MSE: 3.592572, MAE: 2.358441, PSNR: 17.962859, SSIM: 4.757024
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 128:
-Average Train Loss: -0.273561, Validation Loss: 0.233968
-Validation MSE: 3.631234, MAE: 2.396772, PSNR: 18.156171, SSIM: 4.814203
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 129:
-Average Train Loss: -0.188242, Validation Loss: 0.255209
-Validation MSE: 3.540176, MAE: 2.319103, PSNR: 17.700880, SSIM: 4.680150
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 130:
-Average Train Loss: -0.067326, Validation Loss: 0.238799
-Validation MSE: 3.603641, MAE: 2.366437, PSNR: 18.018203, SSIM: 4.769744
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 131:
-Average Train Loss: -0.302590, Validation Loss: 0.233338
-Validation MSE: 3.612023, MAE: 2.382103, PSNR: 18.060113, SSIM: 4.828109
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 132:
-Average Train Loss: -0.349517, Validation Loss: 0.231428
-Validation MSE: 3.613306, MAE: 2.385612, PSNR: 18.066528, SSIM: 4.824764
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 133:
-Average Train Loss: -0.360721, Validation Loss: 0.245181
-Validation MSE: 3.564124, MAE: 2.340752, PSNR: 17.820622, SSIM: 4.701963
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 134:
-Average Train Loss: -0.389456, Validation Loss: 0.241011
-Validation MSE: 3.540554, MAE: 2.318063, PSNR: 17.702768, SSIM: 4.714502
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 135:
-Average Train Loss: -0.439619, Validation Loss: 0.233721
-Validation MSE: 3.608809, MAE: 2.376338, PSNR: 18.044045, SSIM: 4.799483
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 136:
-Average Train Loss: -0.568890, Validation Loss: 0.252165
-Validation MSE: 3.576459, MAE: 2.356947, PSNR: 17.882296, SSIM: 4.745543
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 137:
-Average Train Loss: -0.588035, Validation Loss: 0.234677
-Validation MSE: 3.612263, MAE: 2.379435, PSNR: 18.061314, SSIM: 4.814249
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 138:
-Average Train Loss: -0.563866, Validation Loss: 0.241068
-Validation MSE: 3.591299, MAE: 2.372556, PSNR: 17.956495, SSIM: 4.770207
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 139:
-Average Train Loss: -0.668210, Validation Loss: 0.232726
-Validation MSE: 3.623698, MAE: 2.389116, PSNR: 18.118487, SSIM: 4.815701
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 140:
-Average Train Loss: -1.030291, Validation Loss: 0.235374
-Validation MSE: 3.616191, MAE: 2.382628, PSNR: 18.080954, SSIM: 4.817315
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 141:
-Average Train Loss: -0.962904, Validation Loss: 0.246461
-Validation MSE: 3.610079, MAE: 2.382647, PSNR: 18.050394, SSIM: 4.787046
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 142:
-Average Train Loss: -0.799360, Validation Loss: 0.233594
-Validation MSE: 3.638478, MAE: 2.388687, PSNR: 18.192388, SSIM: 4.822138
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 143:
-Average Train Loss: -0.673133, Validation Loss: 0.227138
-Validation MSE: 3.604813, MAE: 2.373308, PSNR: 18.024064, SSIM: 4.771078
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 144:
-Average Train Loss: -0.573888, Validation Loss: 0.233519
-Validation MSE: 3.626713, MAE: 2.391947, PSNR: 18.133564, SSIM: 4.834078
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 145:
-Average Train Loss: -0.551245, Validation Loss: 0.232927
-Validation MSE: 3.609230, MAE: 2.377856, PSNR: 18.046148, SSIM: 4.799035
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 146:
-Average Train Loss: -0.445231, Validation Loss: 0.235765
-Validation MSE: 3.616131, MAE: 2.374594, PSNR: 18.080656, SSIM: 4.794228
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 147:
-Average Train Loss: -0.646037, Validation Loss: 0.236918
-Validation MSE: 3.619194, MAE: 2.383170, PSNR: 18.095972, SSIM: 4.833673
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 148:
-Average Train Loss: -0.509275, Validation Loss: 0.233669
-Validation MSE: 3.553070, MAE: 2.332497, PSNR: 17.765351, SSIM: 4.727573
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 149:
-Average Train Loss: -0.587599, Validation Loss: 0.235606
-Validation MSE: 3.562700, MAE: 2.338698, PSNR: 17.813501, SSIM: 4.709162
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 150:
-Average Train Loss: -0.592008, Validation Loss: 0.239572
-Validation MSE: 3.603205, MAE: 2.377424, PSNR: 18.016026, SSIM: 4.799402
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 151:
-Average Train Loss: -0.414416, Validation Loss: 0.265854
-Validation MSE: 3.587469, MAE: 2.355913, PSNR: 17.937346, SSIM: 4.745616
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 152:
-Average Train Loss: -0.391858, Validation Loss: 0.263428
-Validation MSE: 3.582041, MAE: 2.367543, PSNR: 17.910205, SSIM: 4.774791
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 153:
-Average Train Loss: -0.413567, Validation Loss: 0.234240
-Validation MSE: 3.614459, MAE: 2.378326, PSNR: 18.072296, SSIM: 4.807101
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 154:
-Average Train Loss: -0.242937, Validation Loss: 0.242036
-Validation MSE: 3.591974, MAE: 2.358546, PSNR: 17.959870, SSIM: 4.780486
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 155:
-Average Train Loss: -0.367943, Validation Loss: 0.265282
-Validation MSE: 3.562894, MAE: 2.350246, PSNR: 17.814470, SSIM: 4.725540
-Best epochs for mse:126, ssim:97, psnr:126, norm_average:97
-Epoch 156:
-Average Train Loss: -0.378786, Validation Loss: 0.234565
-Validation MSE: 3.648644, MAE: 2.406602, PSNR: 18.243217, SSIM: 4.850571
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 157:
-Average Train Loss: -0.071199, Validation Loss: 0.245784
-Validation MSE: 3.602713, MAE: 2.371325, PSNR: 18.013567, SSIM: 4.782157
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 158:
-Average Train Loss: 0.001414, Validation Loss: 0.238456
-Validation MSE: 3.626337, MAE: 2.387409, PSNR: 18.131683, SSIM: 4.846532
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 159:
-Average Train Loss: 0.031311, Validation Loss: 0.239744
-Validation MSE: 3.595990, MAE: 2.371004, PSNR: 17.979952, SSIM: 4.777538
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 160:
-Average Train Loss: 0.040192, Validation Loss: 0.226331
-Validation MSE: 3.602143, MAE: 2.376920, PSNR: 18.010716, SSIM: 4.815597
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 161:
-Average Train Loss: -0.010448, Validation Loss: 0.237095
-Validation MSE: 3.611340, MAE: 2.384782, PSNR: 18.056702, SSIM: 4.807618
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 162:
-Average Train Loss: -0.226091, Validation Loss: 0.241405
-Validation MSE: 3.617582, MAE: 2.388205, PSNR: 18.087912, SSIM: 4.800119
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 163:
-Average Train Loss: -0.255191, Validation Loss: 0.262879
-Validation MSE: 3.585995, MAE: 2.374095, PSNR: 17.929977, SSIM: 4.788202
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 164:
-Average Train Loss: -0.198730, Validation Loss: 0.236145
-Validation MSE: 3.604382, MAE: 2.371741, PSNR: 18.021909, SSIM: 4.792199
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 165:
-Average Train Loss: -0.109007, Validation Loss: 0.232400
-Validation MSE: 3.580028, MAE: 2.363593, PSNR: 17.900137, SSIM: 4.756522
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 166:
-Average Train Loss: -0.140038, Validation Loss: 0.241099
-Validation MSE: 3.600029, MAE: 2.384761, PSNR: 18.000143, SSIM: 4.783221
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 167:
-Average Train Loss: -0.111792, Validation Loss: 0.236468
-Validation MSE: 3.587884, MAE: 2.359824, PSNR: 17.939420, SSIM: 4.749442
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 168:
-Average Train Loss: -0.105644, Validation Loss: 0.226753
-Validation MSE: 3.611198, MAE: 2.368180, PSNR: 18.055991, SSIM: 4.777243
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 169:
-Average Train Loss: -0.103018, Validation Loss: 0.252608
-Validation MSE: 3.535901, MAE: 2.327533, PSNR: 17.679504, SSIM: 4.636364
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 170:
-Average Train Loss: -0.046844, Validation Loss: 0.247862
-Validation MSE: 3.609235, MAE: 2.385509, PSNR: 18.046173, SSIM: 4.805420
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 171:
-Average Train Loss: 0.034098, Validation Loss: 0.232717
-Validation MSE: 3.601167, MAE: 2.376636, PSNR: 18.005833, SSIM: 4.793810
-Best epochs for mse:156, ssim:97, psnr:156, norm_average:156
-Epoch 172:

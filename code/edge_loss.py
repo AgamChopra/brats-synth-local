@@ -11,7 +11,6 @@ Last Modified on Thu Apr 6 2023
 import numpy as np
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
 
 EPSILON = 1E-6
 
