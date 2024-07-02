@@ -64,8 +64,12 @@ def grad_penalty(critic, real, fake, weight):
     """
     device = real.device
     b_size, c, h, w, d = real.shape
-    epsilon = torch.rand(b_size, 1, 1, 1, 1).to(device).repeat(1, c, h, w, d)
-    interp_img = (real * epsilon) + (fake * (1 - epsilon))
+    epsilon = torch.rand(b_size, 1, 1, 1, 1, device=device)
+    epsilon = epsilon.expand_as(real)
+    epsilon = epsilon.requires_grad_(True)
+
+    interp_img = epsilon * real + (1 - epsilon) * fake
+    interp_img = interp_img.requires_grad_(True)
 
     mix_score = critic(interp_img)
     grad = torch.autograd.grad(
@@ -372,7 +376,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
         plt.ylabel('Norm Error')
         plt.legend()
         save_plot(
-            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0.png', HYAK)
+            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0_vt_vt.png', HYAK)
 
         plt.figure(dpi=dpi)
         plt.plot(critic_losses_train, label='Critic Training Loss')
@@ -382,7 +386,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
         plt.ylabel('Error')
         plt.legend()
         save_plot(
-            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0.png', HYAK)
+            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0_vt_vt.png', HYAK)
     else:
         losses_train, losses_val, mae_val, mse_val, ssim_val, psnr_val = metrics
 
@@ -394,7 +398,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plt.ylabel('Metrics')
     plt.legend()
     save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot1.png', HYAK)
+        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot1_vt_vt.png', HYAK)
 
     plt.figure(dpi=dpi)
     plt.plot(norm(mae_val), label='-log(MAE)', color='grey')
@@ -407,7 +411,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plt.ylabel('Normalized Metric Score')
     plt.legend()
     save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot2.png', HYAK)
+        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot2_vt_vt.png', HYAK)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10), dpi=dpi)
     plot_metric(axs[0, 0], mae_val, '-log(MAE)', 'grey')
@@ -416,7 +420,7 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plot_metric(axs[1, 1], psnr_val, 'PSNR', 'blue', '--')
     plt.tight_layout()
     save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot3.png', HYAK)
+        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot3_vt_vt.png', HYAK)
 
 
 def save_plot(filepath, HYAK):

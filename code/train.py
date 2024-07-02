@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 import dataloader
 import models
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
-from utils import ssim_loss, GMELoss3D, Mask_L1Loss, Mask_MSELoss
+from utils import SSIMLoss, GMELoss3D, Mask_L1Loss, Mask_MSELoss
 
 torch.set_printoptions(precision=8)
 
@@ -55,7 +55,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # toptimization criterion
     criterion_masked = [Mask_MSELoss(), Mask_L1Loss()]
     criterion = [nn.MSELoss(), nn.L1Loss(),
-                 ssim_loss(win_size=3, win_sigma=0.1),
+                 SSIMLoss(win_size=3, win_sigma=0.1),
                  GMELoss3D(device=device)]
     lambdas = [0.1, 0.15, 0.6, 0.3]
 

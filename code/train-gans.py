@@ -8,6 +8,7 @@ Created on June 2023
 @Refs:
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
+import argparse
 import torch
 import torch.nn as nn
 from torch.cuda.amp import GradScaler, autocast
@@ -17,7 +18,7 @@ from matplotlib import pyplot as plt
 import dataloader
 import models
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
-from utils import ssim_loss, GMELoss3D, Mask_L1Loss, Mask_MSELoss
+from utils import SSIMLoss, GMELoss3D, Mask_L1Loss, Mask_MSELoss
 from utils import grad_penalty
 
 # Set PyTorch printing precision
@@ -54,7 +55,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     # Initialize models
     neural_network = models.Attention_UNetT(
-        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=True).to(device)
+        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=False).to(device)
     if model_path is not None:
         state_dict = torch.load(model_path, map_location=device)
         neural_network.load_state_dict(state_dict, strict=True)
@@ -74,7 +75,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     # Initialize loss functions and criteria
     criterion_masked = [Mask_MSELoss(), Mask_L1Loss()]
-    criterion = [ssim_loss(win_size=3, win_sigma=0.1),
+    criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
                  GMELoss3D(device=device)]
     lambdas = [0.5, 0.5]
 
@@ -135,12 +136,14 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         neural_network(input_image, gans=True).float()
                     synthetic_masked_region = mask * y
 
-                    error = sum([efunc(known_masked_region, synthetic_masked_region, mask)
-                                for efunc in criterion_masked])
-                    error += sum([lambdas[i] * criterion[i](x, y)
+                    errorA = sum([efunc(known_masked_region, synthetic_masked_region, mask)
+                                  for efunc in criterion_masked])
+                    errorB = sum([lambdas[i] * criterion[i](x, y)
                                  for i in range(len(criterion))])
-                    error -= critic(torch.cat((input_image,
+                    errorC = critic(torch.cat((input_image,
                                     synthetic_masked_region), dim=1).float()).mean()
+
+                    error = errorA + errorB - errorC
 
                 scaler.scale(error).backward()
                 scaler.step(optimizer)
@@ -151,16 +154,15 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             else:
                 optimizerC.zero_grad()
                 with autocast():
-                    y = whole_mask * \
-                        neural_network(input_image, gans=True).float()
+                    y = whole_mask.detach() * neural_network(input_image, gans=True).float()
                     synthetic_masked_region = mask * y
 
                     real_x = torch.cat(
                         (input_image, known_masked_region), dim=1).float()
                     fake_x = torch.cat(
-                        (input_image, synthetic_masked_region), dim=1).float()
+                        (input_image, synthetic_masked_region.detach()), dim=1).float()
 
-                    error_fake = critic(fake_x.detach()).mean()
+                    error_fake = critic(fake_x).mean()
                     error_real = critic(real_x).mean()
                     penalty = grad_penalty(
                         critic, real_x, fake_x, Lambda_penalty)
@@ -193,7 +195,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 input_image = torch.cat((input_image, mask), dim=1)
 
                 with autocast():
-                    y = whole_mask * neural_network(input_image).float()
+                    y = whole_mask * \
+                        neural_network(input_image.detach()).detach().float()
                     synthetic_masked_region = mask * y
 
                     error = 10 * \
@@ -222,23 +225,23 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         if epoch % 10 == 0 and epoch != 0:
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}checkpoint_{epoch}_epochs.pt")
+                       f"{checkpoint_path}checkpoint_{epoch}_epochs_vt_vt.pt")
             torch.save(critic.state_dict(),
-                       f"{checkpoint_path}critic_checkpoint_{epoch}_epochs.pt")
+                       f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_vt_vt.pt")
 
         if mse_val[-1] >= max(mse_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_mse.pt")
+                       f"{checkpoint_path}best_mse_vt_vt.pt")
             best_mse = epoch
 
         if ssim_val[-1] >= max(ssim_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_ssim.pt")
+                       f"{checkpoint_path}best_ssim_vt_vt.pt")
             best_ssim = epoch
 
         if psnr_val[-1] >= max(psnr_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_psnr.pt")
+                       f"{checkpoint_path}best_psnr_vt_vt.pt")
             best_psnr = epoch
 
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
@@ -246,7 +249,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         if avg_metrics[-1] >= avg_metrics.max():
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_average.pt")
+                       f"{checkpoint_path}best_average_vt_vt.pt")
             best_avg = epoch
 
         print(
@@ -257,12 +260,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             f'Best epochs for mse: {best_mse}, ssim: {best_ssim}, psnr: {best_psnr}, norm_average: {best_avg}')
 
     torch.save(neural_network.state_dict(),
-               f"{checkpoint_path}checkpoint_{epochs}_epochs.pt")
+               f"{checkpoint_path}checkpoint_{epochs}_epochs_vt_vt.pt")
 
     return losses_train, losses_val
 
 
-def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1, device='cpu', HYAK=False):
+def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1, device='cpu', HYAK=False, gui=True):
     """
     Validation function for the model.
 
@@ -276,12 +279,11 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1,
         device (str, optional): Device to run the validation on. Default is 'cpu'.
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
-    print(device)
-
     model = models.Attention_UNetT(
-        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=True).to(device)
+        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=False).to(device)
     state_dict = torch.load(
         f"{checkpoint_path}{model_path}", map_location=device)
+    print(f"{checkpoint_path}{model_path}", device)
     model.load_state_dict(state_dict)
     model.eval()
 
@@ -315,14 +317,15 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1,
                 psnr.append(score[2].item())
                 ssim.append(score[3].item())
 
-                dataloader.show_images(
-                    torch.cat(
-                        (x.cpu(), input_image[:, 0:1].cpu(), (synthetic_masked_region + (x * (mask < 0.5))).cpu(),
-                         y.cpu(), synthetic_masked_region.cpu(), torch.abs(x * mask - synthetic_masked_region).cpu()), dim=0), 6, 3, dpi=350)
+                if gui:
+                    dataloader.show_images(
+                        torch.cat(
+                            (x.cpu(), input_image[:, 0:1].cpu(), (synthetic_masked_region + (x * (mask < 0.5))).cpu(),
+                             y.cpu(), synthetic_masked_region.cpu(), torch.abs(x * mask - synthetic_masked_region).cpu()), dim=0), 6, 3, dpi=350)
 
         print(f'\n{model_path}')
         print(
-            f'Total Average MSE: {sum(mse) / len(mse):.4f}, MAE: {sum(mae) / len(mae):.4f}, PSNR: {sum(psnr) / len(psnr):.4f}, SSIM: {sum(ssim) / len(ssim):.4f}')
+            f'Total Average MSE: {sum(mse) / len(mse):.8f}, MAE: {sum(mae) / len(mae):.8f}, PSNR: {sum(psnr) / len(psnr):.8f}, SSIM: {sum(ssim) / len(ssim):.8f}')
 
 
 def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1, params=None, dropout=0.1, HYAK=False):
@@ -357,21 +360,27 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1, params
 
 
 if __name__ == '__main__':
-    HYAK = True
-    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Documents/git-files/brats-synth-local/'
-    model_path = 'best_average.pt'
-    critic_path = 'critic.pt'
+    parser = argparse.ArgumentParser(description='Train GANs with optional GUI.')
+    parser.add_argument('--gui', type=lambda x: (str(x).lower() == 'true'), default=True, help='Enable or disable GUI (default: True)')
+    args = parser.parse_args()
+    print(f"GUI Enabled: {args.gui}")
+
+    HYAK = False
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Documents/git-files/brats-synth-local/param/'
+    model_path = 'best_mse_vt.pt'
+    critic_path = 'critic_vt_vt.pt'
     params = [model_path, critic_path]
     fresh = True
     epochs = 1000
     lr = 1E-3
     batch = 1
     device = 'cuda'
-    n = 1
+    n = 2
     dropout = 0
 
-    trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
-        params=[None, None] if fresh else [f"{checkpoint_path}{model_path}", f"{checkpoint_path}{critic_path}"], dropout=dropout, HYAK=HYAK)
+   # trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
+   #      params=[None, None] if fresh else [f"{checkpoint_path}{model_path}", f"{checkpoint_path}{critic_path}"], dropout=dropout, HYAK=HYAK)
 
     # Uncomment to validate
-    # validate(checkpoint_path, model_path=model_path, epochs=2, dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK)
+    validate(checkpoint_path, model_path=model_path, epochs=2,
+             dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK, gui=args.gui)

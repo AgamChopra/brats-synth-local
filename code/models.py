@@ -332,7 +332,7 @@ class Attention_UNetT(nn.Module):
                     patch_size=7,
                     in_c=int(512/n),
                     n_classes=int(512/n) * 10648,
-                    embed_dim=512,
+                    embed_dim=64,
                     depth=8,
                     n_heads=8,
                     mlp_ratio=4,
@@ -375,6 +375,9 @@ class Attention_UNetT(nn.Module):
         encoder_outputs = []
         for layer in self.encoder_layers:
             y, y_out = layer(y)
+            if gans:
+                y_out = nn.functional.dropout3d(y_out, p=0.3)
+                y = nn.functional.dropout3d(y, p=0.3)
             encoder_outputs.append(y_out)
 
         for layer in self.latent_layer:
@@ -383,13 +386,14 @@ class Attention_UNetT(nn.Module):
                 y = layer(y).view(b, c, 22, 22, 22)
             else:
                 y = layer(y)
-
-        if gans:
-            y += torch.rand_like(y, device=y.device)
+            if gans:
+                y = nn.functional.dropout3d(y, p=0.3)
 
         for layer, skip, encoder_output in zip(self.decoder_layers, self.skip_layers, encoder_outputs[::-1]):
             y = layer(torch.cat((skip(encoder_output, y)[
                       0], pad3d(y, encoder_output)), dim=1))
+            if gans:
+                y = nn.functional.dropout3d(y, p=0.3)
 
         y = self.out(y)
         y = pad3d(y, target_shape)
@@ -465,9 +469,9 @@ class Critic_VT(nn.Module):
             patch_size=12,
             in_c=self.c * 16,
             n_classes=1,
-            embed_dim=512,
-            depth=8,
-            n_heads=8,
+            embed_dim=64,
+            depth=4,
+            n_heads=4,
             mlp_ratio=4,
             qkv_bias=False,
             dropout=0.
