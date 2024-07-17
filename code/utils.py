@@ -49,6 +49,68 @@ def pad3d(inpt, target):
     ).to(dtype=inpt.dtype, device=inpt.device)
 
 
+def get_fft(x, cropped=32):
+    fft_image = torch.fft.rfftn(x)
+    fft_shifted = torch.fft.fftshift(fft_image)
+
+    real = fft_shifted.real
+    imag = fft_shifted.imag
+
+    real = pad3d(real, (cropped, cropped, int(cropped/2) + 1))
+    imag = pad3d(imag, (cropped, cropped, int(cropped/2) + 1))
+
+    return torch.cat((real, imag), dim=1)
+
+
+def reconst_image(real_imag, shape=240):
+    real_imag = pad3d(real_imag, (shape, shape, int(shape/2) + 1))
+
+    fft_reconstructed = torch.complex(real_imag[:, 0:1], real_imag[:, 1:2])
+
+    ifft_shifted = torch.fft.ifftshift(fft_reconstructed)
+    reconstructed_image = torch.fft.irfftn(
+        ifft_shifted, s=(shape, shape, shape)).real
+
+    return reconstructed_image
+
+
+# =============================================================================
+# def get_fft(x, cropped=32):
+#     fft_image = torch.fft.rfftn(x)
+#     fft_shifted = torch.fft.fftshift(fft_image)
+#     #real = fft_shifted.real
+#     #imag = fft_shifted.imag
+#
+#     # (torch.log(1 + torch.sqrt(real**2 + imag**2)) / 6.5) - 1
+#     mag = (torch.log(1 + torch.abs(fft_shifted)) / 6.5) - 1
+#     phase = torch.angle(fft_shifted) / 3  # torch.atan2(imag, real) / 3
+#
+#     mag = pad3d(mag, (cropped, cropped, int(cropped/2) + 1))
+#     phase = pad3d(phase, (cropped, cropped, int(cropped/2) + 1))
+#
+#     return torch.cat((mag, phase), dim=1)
+#
+#
+# def reconst_image(mag_phase, shape=240):
+#     mag_phase = pad3d(mag_phase, (shape, shape, int(shape/2) + 1))
+#     mag, phase = mag_phase[:, 0:1], mag_phase[:, 1:2]
+#
+#     mag_ = (torch.exp((mag + 1) * 6.5) - 1)
+#     phase_ = 3 * phase
+#
+#     real = mag_ * torch.cos(phase_)
+#     imag = mag_ * torch.sin(phase_)
+#
+#     fft_reconstructed = torch.complex(real, imag)
+#
+#     ifft_shifted = torch.fft.ifftshift(fft_reconstructed)
+#     reconstructed_image = torch.fft.irfftn(
+#         ifft_shifted, s=(shape, shape, shape)).real
+#
+#     return reconstructed_image
+# =============================================================================
+
+
 def grad_penalty(critic, real, fake, weight):
     """
     Compute gradient penalty for WGAN-GP.
@@ -324,7 +386,7 @@ def plot_scans(scans=[], figsize=(15, 15), dpi=180, title=None):
     plt.show()
 
 
-def show_images(data, num_samples=9, cols=3, masking=0, mask_signal=False, cmap='gray', fs=5, dpi=100):
+def show_images(data, num_samples=9, cols=3, masking=0, mask_signal=False, cmap='gray', fs=(5, 5), dpi=100):
     """
     Display a set of images.
 
@@ -342,7 +404,7 @@ def show_images(data, num_samples=9, cols=3, masking=0, mask_signal=False, cmap=
         data *= torch.where(data[masking] > 0, 1, 0)[None, ...]
     data = data[..., int(data.shape[-1] / 2)]
     data = norm(data)
-    plt.figure(figsize=(fs, fs), dpi=dpi)
+    plt.figure(figsize=(fs[0], fs[1]), dpi=dpi)
 
     for i, img in enumerate(data):
         if i == num_samples:
@@ -354,7 +416,7 @@ def show_images(data, num_samples=9, cols=3, masking=0, mask_signal=False, cmap=
     plt.show()
 
 
-def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
+def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
     """
     Visualize training metrics.
 
@@ -368,37 +430,26 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
         critic_losses_train, losses_train, losses_val, mae_val, mse_val, ssim_val, psnr_val = metrics
 
         plt.figure(dpi=dpi)
-        plt.plot(norm(critic_losses_train), label='Critic Training Loss')
-        plt.plot(norm(losses_train), label='Generator Training Loss')
-        plt.plot(norm(losses_val), label='Generator Validation Loss')
-        plt.title('Normalized Loss Curve')
+        plt.plot(losses_train, label='Generator Training Error')
+        plt.plot(losses_val, label='Generator Validation Error')
+        plt.plot(critic_losses_train, label='Critic Training Error')
+        plt.title('GANs Error')
         plt.xlabel('Epoch')
         plt.ylabel('Norm Error')
         plt.legend()
-        save_plot(
-            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0_vt_vt.png', HYAK)
+        save_plot(filepath=f'{path}{identity}_gans_loss.png' if path else None)
 
-        plt.figure(dpi=dpi)
-        plt.plot(critic_losses_train, label='Critic Training Loss')
-        plt.plot(losses_train, label='Generator Training Loss')
-        plt.title('Loss Curve')
-        plt.xlabel('Epoch')
-        plt.ylabel('Error')
-        plt.legend()
-        save_plot(
-            '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot0_vt_vt.png', HYAK)
     else:
         losses_train, losses_val, mae_val, mse_val, ssim_val, psnr_val = metrics
 
     plt.figure(dpi=dpi)
-    plt.plot(losses_train, label='Training Loss')
-    plt.plot(losses_val, label='Validation Loss')
-    plt.title('Loss Curve')
+    plt.plot(losses_train, label='Training Error')
+    plt.plot(losses_val, label='Validation Error')
+    plt.title('Synthesis Error')
     plt.xlabel('Epoch')
     plt.ylabel('Metrics')
     plt.legend()
-    save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot1_vt_vt.png', HYAK)
+    save_plot(filepath=f'{path}{identity}_synth_loss.png' if path else None)
 
     plt.figure(dpi=dpi)
     plt.plot(norm(mae_val), label='-log(MAE)', color='grey')
@@ -408,22 +459,23 @@ def train_visualize(metrics, gans=False, dpi=200, HYAK=False):
     plt.plot(norm(psnr_val), label='PSNR', color='blue', linestyle='--')
     plt.title('Normalized Validation Metrics')
     plt.xlabel('Epoch')
-    plt.ylabel('Normalized Metric Score')
+    plt.ylabel('Normalized Score')
     plt.legend()
-    save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot2_vt_vt.png', HYAK)
+    save_plot(filepath=f'{path}{identity}_norm_validation_metrics.png' if path else None)
 
+    plt.figure(dpi=dpi)
     fig, axs = plt.subplots(2, 2, figsize=(10, 10), dpi=dpi)
     plot_metric(axs[0, 0], mae_val, '-log(MAE)', 'grey')
     plot_metric(axs[0, 1], mse_val, '-log(MSE)', 'red')
     plot_metric(axs[1, 0], ssim_val, '-log(1-SSIM)', 'green', '--')
     plot_metric(axs[1, 1], psnr_val, 'PSNR', 'blue', '--')
+    plt.xlabel('Epoch')
+    plt.ylabel('Score')
     plt.tight_layout()
-    save_plot(
-        '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/plot3_vt_vt.png', HYAK)
+    save_plot(filepath=f'{path}{identity}_validation_metrics.png' if path else None)
 
 
-def save_plot(filepath, HYAK):
+def save_plot(filepath=None, transparent=False, dpi=200):
     """
     Save the plot to a file if HYAK flag is set, otherwise show the plot.
 
@@ -431,8 +483,9 @@ def save_plot(filepath, HYAK):
         filepath (str): Path to save the plot.
         HYAK (bool): Flag indicating if the plot should be saved.
     """
-    if HYAK:
-        plt.savefig(filepath, dpi=200, transparent=True, bbox_inches='tight')
+    if filepath is not None:
+        plt.savefig(filepath, dpi=dpi, transparent=transparent,
+                    bbox_inches='tight')
     else:
         plt.show()
 

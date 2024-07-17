@@ -14,7 +14,7 @@ import torch.nn as nn
 from torch.cuda.amp import GradScaler, autocast
 from numpy import array
 from tqdm import trange
-from matplotlib import pyplot as plt
+
 import dataloader
 import models
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
@@ -32,7 +32,8 @@ torch.backends.cudnn.allow_tf32 = True
 
 def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
           device='cpu', model_path=None, critic_path=None, n=1,
-          beta1=0.5, beta2=0.999, Lambda_penalty=10, dropout=0.1, HYAK=False):
+          beta1=0.5, beta2=0.999, Lambda_penalty=10, dropout=0.1, HYAK=False,
+          identity=''):
     """
     Training function for the model.
 
@@ -54,13 +55,13 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     print(device)
 
     # Initialize models
-    neural_network = models.Attention_UNetT(
-        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=False).to(device)
+    neural_network = models.Attention_UNet(
+        in_c=2, out_c=1, n=n, dropout_rate=dropout).to(device)
     if model_path is not None:
         state_dict = torch.load(model_path, map_location=device)
         neural_network.load_state_dict(state_dict, strict=True)
 
-    critic = models.Critic_VT(in_c=3, fact=1).to(device)
+    critic = models.Critic(in_c=3, fact=3).to(device)
     if critic_path is not None:
         try:
             state_dict = torch.load(critic_path, map_location=device)
@@ -76,8 +77,9 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # Initialize loss functions and criteria
     criterion_masked = [Mask_MSELoss(), Mask_L1Loss()]
     criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
-                 GMELoss3D(device=device)]
-    lambdas = [0.5, 0.5]
+                 GMELoss3D(device=device),
+                 nn.L1Loss()]
+    lambdas = [0.5, 0.4, 0.1]
 
     # Initialize dataloaders
     dataloader_paths = [
@@ -88,13 +90,17 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/'
     ]
     data = dataloader.DataLoader(
-        batch=batch, augment=True, aug_thresh=0.05, workers=4, norm=True, path=dataloader_paths[0])
+        batch=batch, augment=True, aug_thresh=0.05, workers=4,
+        norm=True, path=dataloader_paths[0])
     data_val = dataloader.DataLoader(
-        batch=batch, augment=False, workers=4, norm=True, path=dataloader_paths[1])
+        batch=batch, augment=False, workers=4,
+        norm=True, path=dataloader_paths[1])
 
     # Calculate number of iterations per epoch
-    iterations = (data.max_id // batch) + (data.max_id % batch > 0)
-    iterations_val = (data_val.max_id // batch) + (data_val.max_id % batch > 0)
+    iterations = (data.max_id // batch) + (
+        data.max_id % batch > 0)
+    iterations_val = (data_val.max_id // batch) + (
+        data_val.max_id % batch > 0)
 
     # Initialize evaluation metrics
     ssim_metric = SSIM_Metric()
@@ -116,7 +122,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         neural_network.train()
         critic.train()
 
-        for _ in trange(iterations):
+        for itervar in trange(iterations):
             x, mask = data.load_batch()
             if x is None or mask is None:
                 print("Batch returned None values.")
@@ -129,19 +135,22 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             input_image = (x > 0) * ((mask < 0.5) * x)
             input_image = torch.cat((input_image, mask), dim=1)
 
-            if (epoch + 1) % 2 == 0:
+            if (itervar + 1) % 2 == 0:
+                # Generator Optimization
                 optimizer.zero_grad()
                 with autocast():
                     y = whole_mask * \
-                        neural_network(input_image, gans=True).float()
+                        neural_network(input_image).float()
                     synthetic_masked_region = mask * y
 
-                    errorA = sum([efunc(known_masked_region, synthetic_masked_region, mask)
-                                  for efunc in criterion_masked])
+                    errorA = sum([efunc(known_masked_region,
+                                        synthetic_masked_region, mask)
+                                 for efunc in criterion_masked])
                     errorB = sum([lambdas[i] * criterion[i](x, y)
                                  for i in range(len(criterion))])
                     errorC = critic(torch.cat((input_image,
-                                    synthetic_masked_region), dim=1).float()).mean()
+                                    synthetic_masked_region),
+                                              dim=1).float()).mean()
 
                     error = errorA + errorB - errorC
 
@@ -152,15 +161,18 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 losses.append(error.item())
 
             else:
+                # Critic Optimization
                 optimizerC.zero_grad()
                 with autocast():
-                    y = whole_mask.detach() * neural_network(input_image, gans=True).float()
+                    y = whole_mask.detach() * neural_network(
+                        input_image).float()
                     synthetic_masked_region = mask * y
 
                     real_x = torch.cat(
                         (input_image, known_masked_region), dim=1).float()
                     fake_x = torch.cat(
-                        (input_image, synthetic_masked_region.detach()), dim=1).float()
+                        (input_image, synthetic_masked_region.detach()),
+                        dim=1).float()
 
                     error_fake = critic(fake_x).mean()
                     error_real = critic(real_x).mean()
@@ -175,16 +187,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
                 critic_losses.append(error.item())
 
-        losses_train.append(sum(losses) / len(losses) if losses else 0)
+        losses_train.append(sum(losses) / len(losses))
         losses = []
 
         critic_losses_train.append(
-            sum(critic_losses) / len(critic_losses) if critic_losses else 0)
+            sum(critic_losses) / len(critic_losses))
         critic_losses = []
+
+        print(
+            f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}')
 
         # Validation loop
         neural_network.eval()
-        for _ in trange(3 * iterations_val):
+        for _ in trange(iterations_val):
             with torch.no_grad():
                 x, mask = data_val.load_batch()
                 x, mask = x.float().to(device), mask.float().to(device)
@@ -200,7 +215,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     synthetic_masked_region = mask * y
 
                     error = 10 * \
-                        sum([efunc(known_masked_region, synthetic_masked_region, mask)
+                        sum([efunc(known_masked_region,
+                                   synthetic_masked_region, mask)
                             for efunc in criterion_masked])
                     error += sum([lambdas[i] * criterion[i](x, y)
                                  for i in range(len(criterion))])
@@ -220,28 +236,32 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         mse, mae, psnr, ssim = [], [], [], []
 
         if (epoch % 1 == 0 or epoch == epochs - 1) and epoch != 0:
-            train_visualize([critic_losses_train, losses_train, losses_val, mae_val,
-                            mse_val, ssim_val, psnr_val], gans=True, dpi=180, HYAK=HYAK)
+            train_visualize([critic_losses_train, losses_train,
+                             losses_val, mae_val,
+                            mse_val, ssim_val, psnr_val],
+                            gans=True, dpi=180,
+                            path=checkpoint_path if HYAK else None,
+                            identity=identity)
 
         if epoch % 10 == 0 and epoch != 0:
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}checkpoint_{epoch}_epochs_vt_vt.pt")
+                       f"{checkpoint_path}checkpoint_{epoch}_epochs_{identity}.pt")
             torch.save(critic.state_dict(),
-                       f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_vt_vt.pt")
+                       f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
 
         if mse_val[-1] >= max(mse_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_mse_vt_vt.pt")
+                       f"{checkpoint_path}best_mse_{identity}.pt")
             best_mse = epoch
 
         if ssim_val[-1] >= max(ssim_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_ssim_vt_vt.pt")
+                       f"{checkpoint_path}best_ssim_{identity}.pt")
             best_ssim = epoch
 
         if psnr_val[-1] >= max(psnr_val):
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_psnr_vt_vt.pt")
+                       f"{checkpoint_path}best_psnr_{identity}.pt")
             best_psnr = epoch
 
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
@@ -249,23 +269,23 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         if avg_metrics[-1] >= avg_metrics.max():
             torch.save(neural_network.state_dict(),
-                       f"{checkpoint_path}best_average_vt_vt.pt")
+                       f"{checkpoint_path}best_average_{identity}.pt")
             best_avg = epoch
 
-        print(
-            f'Average Train Loss: {losses_train[-1]:.6f}, Validation Loss: {losses_val[-1]:.6f}')
+        print(f'Average Validation Loss: {losses_val[-1]:.6f}')
         print(
             f'Validation MSE: {mse_val[-1]:.6f}, MAE: {mae_val[-1]:.6f}, PSNR: {psnr_val[-1]:.6f}, SSIM: {ssim_val[-1]:.6f}')
         print(
             f'Best epochs for mse: {best_mse}, ssim: {best_ssim}, psnr: {best_psnr}, norm_average: {best_avg}')
 
     torch.save(neural_network.state_dict(),
-               f"{checkpoint_path}checkpoint_{epochs}_epochs_vt_vt.pt")
+               f"{checkpoint_path}checkpoint_{epochs}_epochs_{identity}.pt")
 
     return losses_train, losses_val
 
 
-def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1, device='cpu', HYAK=False, gui=True):
+def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
+             dropout=0.1, device='cpu', HYAK=False, gui=True):
     """
     Validation function for the model.
 
@@ -280,7 +300,8 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1,
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
     model = models.Attention_UNetT(
-        in_c=2, out_c=1, n=n, dropout_rate=dropout, vision_transformer=False).to(device)
+        in_c=2, out_c=1, n=n, dropout_rate=dropout,
+    ).to(device)
     state_dict = torch.load(
         f"{checkpoint_path}{model_path}", map_location=device)
     print(f"{checkpoint_path}{model_path}", device)
@@ -306,7 +327,7 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1,
                 with autocast():
                     input_image = (x > 0) * ((mask < 0.5) * x)
                     input_image = torch.cat((input_image, mask), dim=1)
-                    y = torch.clip(model(input_image, gans=True), 0., 1.)
+                    y = torch.clip(model(input_image), 0., 1.)
                     synthetic_masked_region = mask * y * whole_mask
 
                     score = [scores[i](
@@ -320,15 +341,19 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100, dropout=0.1,
                 if gui:
                     dataloader.show_images(
                         torch.cat(
-                            (x.cpu(), input_image[:, 0:1].cpu(), (synthetic_masked_region + (x * (mask < 0.5))).cpu(),
-                             y.cpu(), synthetic_masked_region.cpu(), torch.abs(x * mask - synthetic_masked_region).cpu()), dim=0), 6, 3, dpi=350)
+                            (x.cpu(), input_image[:, 0:1].cpu(),
+                             (synthetic_masked_region + (x * (mask < 0.5))).cpu(),
+                             y.cpu(), synthetic_masked_region.cpu(),
+                             torch.abs(x * mask - synthetic_masked_region).cpu()),
+                            dim=0), 6, 3, dpi=350)
 
         print(f'\n{model_path}')
         print(
             f'Total Average MSE: {sum(mse) / len(mse):.8f}, MAE: {sum(mae) / len(mae):.8f}, PSNR: {sum(psnr) / len(psnr):.8f}, SSIM: {sum(ssim) / len(ssim):.8f}')
 
 
-def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1, params=None, dropout=0.1, HYAK=False):
+def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1,
+        params=None, dropout=0.1, HYAK=False, identity=''):
     """
     Wrapper function to train the model and plot the training and validation losses.
 
@@ -348,27 +373,28 @@ def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1, params
         epochs=epochs, lr=lr, batch=batch,
         device=device, model_path=params[0],
         critic_path=params[1], n=n,
-        dropout=dropout, HYAK=HYAK
+        dropout=dropout, HYAK=HYAK,
+        identity=identity
     )
-    plt.plot(losses_train, label='Training Loss')
-    plt.plot(losses_val, label='Validation Loss')
-    plt.title('Compound Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Error')
-    plt.legend()
-    plt.show()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train GANs with optional GUI.')
-    parser.add_argument('--gui', type=lambda x: (str(x).lower() == 'true'), default=True, help='Enable or disable GUI (default: True)')
+    parser = argparse.ArgumentParser(description='GANs.')
+    parser.add_argument('--gui', type=lambda x: (str(x).lower() == 'true'),
+                        default=True, help='Enable or disable GUI (default: True)')
+    parser.add_argument('--hyak', type=lambda x: (str(x).lower() == 'false'),
+                        default=False, help='Enable or disable HYAK mode (default: False)')
+    parser.add_argument('--identity', default='gans',
+                        help='identity of the run (default: gans)')
     args = parser.parse_args()
     print(f"GUI Enabled: {args.gui}")
+    print(f"HYAK Enabled: {args.hyak}")
+    print(f"Identity: {args.identity}")
 
-    HYAK = False
+    HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Documents/git-files/brats-synth-local/param/'
-    model_path = 'best_mse_vt.pt'
-    critic_path = 'critic_vt_vt.pt'
+    model_path = 'best_mse.pt'
+    critic_path = 'critic.pt'
     params = [model_path, critic_path]
     fresh = True
     epochs = 1000
@@ -378,9 +404,12 @@ if __name__ == '__main__':
     n = 2
     dropout = 0
 
-   # trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
-   #      params=[None, None] if fresh else [f"{checkpoint_path}{model_path}", f"{checkpoint_path}{critic_path}"], dropout=dropout, HYAK=HYAK)
+    trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
+        params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
+                                           f"{checkpoint_path}{critic_path}"],
+        dropout=dropout, HYAK=HYAK, identity=args.identity)
 
     # Uncomment to validate
-    validate(checkpoint_path, model_path=model_path, epochs=2,
-             dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK, gui=args.gui)
+    # validate(checkpoint_path, model_path=model_path, epochs=2,
+    #         dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
+    #         gui=args.gui)
