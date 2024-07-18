@@ -15,6 +15,10 @@ from utils import pad3d
 from vision_transformer import VisionTransformer3D
 
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 class AttentionGrid(nn.Module):
     """
     Attention Grid module for 3D convolutions.
@@ -266,10 +270,10 @@ class Critic_VT(nn.Module):
 
         self.fc1 = VisionTransformer3D(
             img_size=48,
-            patch_size=48,
+            patch_size=12,
             in_c=self.c * 8,
             n_classes=1,
-            embed_dim=32,
+            embed_dim=64,
             depth=4,
             n_heads=4,
             mlp_ratio=4,
@@ -279,10 +283,10 @@ class Critic_VT(nn.Module):
 
         self.fc2 = VisionTransformer3D(
             img_size=48,
-            patch_size=24,
+            patch_size=4,
             in_c=self.c * 8,
             n_classes=1,
-            embed_dim=32,
+            embed_dim=64,
             depth=4,
             n_heads=4,
             mlp_ratio=4,
@@ -290,58 +294,18 @@ class Critic_VT(nn.Module):
             dropout=0.
         )
 
-        self.fc3 = VisionTransformer3D(
-            img_size=48,
-            patch_size=12,
-            in_c=self.c * 8,
-            n_classes=1,
-            embed_dim=32,
-            depth=4,
-            n_heads=4,
-            mlp_ratio=4,
-            qkv_bias=False,
-            dropout=0.
-        )
-
-        self.fc4 = VisionTransformer3D(
-            img_size=48,
-            patch_size=6,
-            in_c=self.c * 8,
-            n_classes=1,
-            embed_dim=32,
-            depth=4,
-            n_heads=4,
-            mlp_ratio=4,
-            qkv_bias=False,
-            dropout=0.
-        )
-
-        self.fc5 = VisionTransformer3D(
-            img_size=48,
-            patch_size=3,
-            in_c=self.c * 8,
-            n_classes=1,
-            embed_dim=32,
-            depth=4,
-            n_heads=4,
-            mlp_ratio=4,
-            qkv_bias=False,
-            dropout=0.
-        )
-
-        self.out = nn.Linear(5, 1)
+        self.out = nn.Linear(2, 1)
 
     def forward(self, x):
         target_shape = x.shape[2:]
         y = pad3d(x.float(), max(target_shape))
         y = self.E(y)
-        y1, y2, y3, y4, y5 = self.fc1(y), self.fc2(
-            y), self.fc3(y), self.fc4(y), self.fc5(y)
-        y = self.out(torch.cat((y1, y2, y3, y4, y5), dim=1))
+        y1, y2 = self.fc1(y), self.fc2(y)
+        y = self.out(torch.cat((y1, y2), dim=1))
         return y.view(x.shape[0])
 
 
-def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
+def test_model(device='cpu', B=1, emb=1, ic=2, oc=1, n=64):
     """
     Test function to instantiate and test the models.
 
@@ -353,11 +317,13 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
         oc (int, optional): Output channels. Default is 1.
         n (int, optional): Scaling factor for channels. Default is 64.
     """
-    a = torch.ones((B, ic, 240, 240, 155), device=device)
+    a = torch.ones((B, ic, 240, 240, 240), device=device)
 
-    model = Attention_UNet(in_c=ic, out_c=oc, n=n).to(device)
-    critic1 = Critic(in_c=ic, fact=1).to(device)
-    critic2 = Critic_VT(in_c=ic, fact=1).to(device)
+    model = Attention_UNet(in_c=ic, out_c=oc, n=n, dropout_rate=0).to(device)
+    print(f'Model size: {int(count_parameters(model)/1000000)}M')
+
+    critic1 = Critic(in_c=oc, fact=1).to(device)
+    critic2 = Critic_VT(in_c=oc, fact=1).to(device)
 
     b = model(a)
     c = critic1(b)
@@ -370,4 +336,4 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
 
 
 if __name__ == '__main__':
-    test_model('cpu', B=1, n=64)
+    test_model('cpu', B=1, n=2)

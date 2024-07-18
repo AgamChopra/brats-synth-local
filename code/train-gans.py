@@ -57,11 +57,13 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # Initialize models
     neural_network = models.Attention_UNet(
         in_c=2, out_c=1, n=n, dropout_rate=dropout).to(device)
+    print(
+        f'Model size: {int(models.count_parameters(neural_network)/1000000)}M')
     if model_path is not None:
         state_dict = torch.load(model_path, map_location=device)
         neural_network.load_state_dict(state_dict, strict=True)
 
-    critic = models.Critic(in_c=3, fact=3).to(device)
+    critic = models.Critic(in_c=3, fact=4).to(device)
     if critic_path is not None:
         try:
             state_dict = torch.load(critic_path, map_location=device)
@@ -79,7 +81,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
                  GMELoss3D(device=device),
                  nn.L1Loss()]
-    lambdas = [0.5, 0.4, 0.1]
+    lambdas = [0.5, 0.25, 0.25]
 
     # Initialize dataloaders
     dataloader_paths = [
@@ -135,7 +137,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             input_image = (x > 0) * ((mask < 0.5) * x)
             input_image = torch.cat((input_image, mask), dim=1)
 
-            if (itervar + 1) % 2 == 0:
+            if (itervar + 1) % 5 == 0:
                 # Generator Optimization
                 optimizer.zero_grad()
                 with autocast():
@@ -143,14 +145,14 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         neural_network(input_image).float()
                     synthetic_masked_region = mask * y
 
-                    errorA = sum([efunc(known_masked_region,
+                    errorA = 0.25 * sum([efunc(known_masked_region,
                                         synthetic_masked_region, mask)
-                                 for efunc in criterion_masked])
-                    errorB = sum([lambdas[i] * criterion[i](x, y)
-                                 for i in range(len(criterion))])
-                    errorC = critic(torch.cat((input_image,
-                                    synthetic_masked_region),
-                                              dim=1).float()).mean()
+                                         for efunc in criterion_masked])
+                    errorB = 0.55 * sum([lambdas[i] * criterion[i](x, y)
+                                         for i in range(len(criterion))])
+                    errorC = 0.2 * critic(torch.cat((input_image,
+                                                     synthetic_masked_region),
+                                                    dim=1).float()).mean()
 
                     error = errorA + errorB - errorC
 
@@ -299,25 +301,24 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
         device (str, optional): Device to run the validation on. Default is 'cpu'.
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
-    model = models.Attention_UNetT(
-        in_c=2, out_c=1, n=n, dropout_rate=dropout,
-    ).to(device)
-    state_dict = torch.load(
-        f"{checkpoint_path}{model_path}", map_location=device)
-    print(f"{checkpoint_path}{model_path}", device)
-    model.load_state_dict(state_dict)
-    model.eval()
-
-    dataloader_path = '/gscratch/kurtlab/agam/data/brats-local-synthesis/ValidationData/' if HYAK else '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/'
-    data = dataloader.DataLoader(
-        batch=batch, augment=False, workers=4, norm=True, path=dataloader_path)
-
-    iterations = (data.max_id // batch) + (data.max_id % batch > 0)
-
-    scores = [nn.MSELoss(), nn.L1Loss(), PSNR_Metric(), SSIM_Metric()]
-    mse, mae, psnr, ssim = [], [], [], []
-
     with torch.no_grad():
+        model = models.Attention_UNet(
+            in_c=2, out_c=1, n=n, dropout_rate=dropout).to(device)
+        state_dict = torch.load(
+            f"{checkpoint_path}{model_path}", map_location=device)
+        print(f"{checkpoint_path}{model_path}", device)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        dataloader_path = '/gscratch/kurtlab/agam/data/brats-local-synthesis/ValidationData/' if HYAK else '/home/agam/Desktop/brats_2024_local_impainting/ValidationData/'
+        data = dataloader.DataLoader(
+            batch=batch, augment=False, workers=4, norm=True, path=dataloader_path)
+
+        iterations = (data.max_id // batch) + (data.max_id % batch > 0)
+
+        scores = [nn.MSELoss(), nn.L1Loss(), PSNR_Metric(), SSIM_Metric()]
+        mse, mae, psnr, ssim = [], [], [], []
+
         for _ in range(epochs):
             for _ in trange(iterations):
                 x, mask = data.load_batch()
@@ -382,7 +383,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='GANs.')
     parser.add_argument('--gui', type=lambda x: (str(x).lower() == 'true'),
                         default=True, help='Enable or disable GUI (default: True)')
-    parser.add_argument('--hyak', type=lambda x: (str(x).lower() == 'false'),
+    parser.add_argument('--hyak', type=lambda x: (str(x).lower() == 'true'),
                         default=False, help='Enable or disable HYAK mode (default: False)')
     parser.add_argument('--identity', default='gans',
                         help='identity of the run (default: gans)')
@@ -392,9 +393,9 @@ if __name__ == '__main__':
     print(f"Identity: {args.identity}")
 
     HYAK = args.hyak
-    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Documents/git-files/brats-synth-local/param/'
-    model_path = 'best_mse.pt'
-    critic_path = 'critic.pt'
+    checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
+    model_path = 'checkpoint_50_epochs_gans_vt.pt'
+    critic_path = ''
     params = [model_path, critic_path]
     fresh = True
     epochs = 1000
@@ -404,12 +405,12 @@ if __name__ == '__main__':
     n = 2
     dropout = 0
 
-    trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
-        params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
-                                           f"{checkpoint_path}{critic_path}"],
-        dropout=dropout, HYAK=HYAK, identity=args.identity)
+    # trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
+    #     params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
+    #                                        f"{checkpoint_path}{critic_path}"],
+    #     dropout=dropout, HYAK=HYAK, identity=args.identity)
 
     # Uncomment to validate
-    # validate(checkpoint_path, model_path=model_path, epochs=2,
-    #         dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
-    #         gui=args.gui)
+    validate(checkpoint_path, model_path=model_path, epochs=2,
+             dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
+             gui=args.gui)
