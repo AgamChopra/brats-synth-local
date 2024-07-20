@@ -1,5 +1,16 @@
+"""
+Created on June 2023
+@author: Agamdeep Chopra
+@email: achopra4@uw.edu
+@website: https://agamchopra.github.io/
+@affiliation: KurtLab, Department of Mechanical Engineering,
+              University of Washington, Seattle, USA
+"""
 import torch
 import torch.nn as nn
+import time
+
+from utils import count_parameters, test_model_memory_usage
 
 
 class PatchEmbed3D(nn.Module):
@@ -126,7 +137,7 @@ class Transformer(nn.Module):
 
 class VisionTransformer3D(nn.Module):
     """
-    Vision Transformer for 3D images.
+    Example Vision Transformer model for 3D images.
 
     Args:
         img_size (int, optional): Size of the input image. Default is 128.
@@ -172,3 +183,63 @@ class VisionTransformer3D(nn.Module):
         cls_token_final = x[:, 0]
         x = self.head(cls_token_final)
         return x
+
+
+def test_vision_transformer3d():
+    # Define the model parameters
+    img_size = 128
+    patch_size = 16
+    in_c = 1
+    n_classes = 1
+    embed_dim = 512
+    depth = 8
+    n_heads = 8
+    mlp_ratio = 4.0
+    qkv_bias = True
+    dropout = 0.0
+
+    # Instantiate the VisionTransformer3D model
+    model = VisionTransformer3D(
+        img_size=img_size,
+        patch_size=patch_size,
+        in_c=in_c,
+        n_classes=n_classes,
+        embed_dim=embed_dim,
+        depth=depth,
+        n_heads=n_heads,
+        mlp_ratio=mlp_ratio,
+        qkv_bias=qkv_bias,
+        dropout=dropout
+    )
+
+    # Print the model architecture (optional)
+    print(f'\nVanilla 3DVT Model size: {int(count_parameters(model)/1000000)}M\n')
+    # print(model)
+
+    # Create a random input tensor with the shape (batch_size, channels, depth, height, width)
+    batch_size = 2
+    input_tensor = torch.randn(batch_size, in_c, img_size, img_size, img_size)
+
+    # Pass the input tensor through the model
+    start_time = time.time()
+    output = model(input_tensor)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    # Print the output shape
+    print("Output shape:", output.shape)
+
+    # Check if the output shape is correct
+    assert output.shape == (
+        batch_size, n_classes), "Output shape is incorrect!"
+    
+    print("Elapsed time: {:.6f} seconds\n".format(elapsed_time))
+    
+    test_model_memory_usage(model, input_tensor)
+
+    print("Test passed!")
+
+
+# Run the test function
+if __name__ == '__main__':
+    test_vision_transformer3d()

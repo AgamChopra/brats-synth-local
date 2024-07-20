@@ -11,12 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import pad3d
-from vision_transformer import VisionTransformer3D
-
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+from utils import pad3d, count_parameters
+from attention import VisionTransformer3D
 
 
 class AttentionGrid(nn.Module):
