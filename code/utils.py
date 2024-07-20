@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from scipy.ndimage import zoom
 from edge_loss import GradEdge3D
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+import time
 
 
 def get_memory_usage():
@@ -44,14 +45,42 @@ def test_model_memory_usage(model, input_tensor):
     model = model.to(device)
     input_tensor = input_tensor.to(device)
 
-    # Measure memory usage before and after forward pass
+    # Initialize optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+
+    # Measure memory usage before forward pass
     (t, f, u1) = get_memory_usage()
     print(f"Memory used by model before forward pass: {u1 - u} MB")
 
+    # Perform forward pass
+    start_time = time.time()
     output = model(input_tensor)
+    
+    # Measure memory usage after forward pass
+    (t, f, u2) = get_memory_usage()
+    print(f"Memory used by model after forward pass: {u2 - u} MB")
+    
+    # Perform backward pass
+    output.sum().backward()
+    
+    # Measure memory usage after backward pass
+    (t, f, u3) = get_memory_usage()
+    print(f"Memory used by model after backward pass: {u3 - u} MB")
 
-    (t, f, u1) = get_memory_usage()
-    print(f"Memory used by model after forward pass: {u1 - u} MB")
+    # Perform optimization step
+    optimizer.step()
+    optimizer.zero_grad()
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    # Measure memory usage after optimization step
+    (t, f, u4) = get_memory_usage()
+    print(f"Memory used by model after optimization step: {u4 - u} MB")
+
+    # Print output shape and elapsed time
+    print("Elapsed time: {:.6f} seconds".format(elapsed_time))
+
+
 
 
 def count_parameters(model):

@@ -194,7 +194,7 @@ def test_vision_transformer3d():
     )
 
     # Print the model architecture (optional)
-    print(f'\nLinearized 3DVT Model size: {
+    print(f'\nGated Linear 3DVT Model size: {
           int(count_parameters(model)/1000000)}M\n')
     # print(model)
 
@@ -203,15 +203,10 @@ def test_vision_transformer3d():
     input_tensor = torch.randn(batch_size, in_c, img_size, img_size, img_size)
 
     # Pass the input tensor through the model
-    start_time = time.time()
     output = model(input_tensor).view(input_tensor.shape)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
 
     # Print the output shape
     print("Output shape:", output.shape)
-
-    print("Elapsed time: {:.6f} seconds\n".format(elapsed_time))
 
     test_model_memory_usage(model, input_tensor)
 
