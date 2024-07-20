@@ -152,9 +152,10 @@ class VisionTransformer3D(nn.Module):
         dropout (float, optional): Dropout probability. Default is 0.
     """
 
-    def __init__(self, img_size=128, patch_size=16, in_c=1, n_classes=1,
-                 embed_dim=512, depth=8, n_heads=8, mlp_ratio=4.,
-                 qkv_bias=True, dropout=0.):
+    def __init__(self, img_size=120, patch_size=16, in_c=1,
+                 n_classes=1, embed_dim=512, depth=8, n_heads=8,
+                 mlp_ratio=4., qkv_bias=True, dropout=0.,
+                 dws_ratio=2):
         super(VisionTransformer3D, self).__init__()
         self.patch_embed = PatchEmbed3D(
             img_size, patch_size, in_c=in_c, embed_dim=embed_dim)
@@ -163,15 +164,22 @@ class VisionTransformer3D(nn.Module):
             1, 1 + self.patch_embed.n_patches, embed_dim))
         self.pos_drop = nn.Dropout(dropout)
         self.transformers = nn.ModuleList([
-            Transformer(dim=embed_dim, n_heads=n_heads, mlp_ratio=mlp_ratio,
-                        qkv_bias=qkv_bias, p=dropout, attn_p=dropout
-                        ) for _ in range(depth)
+            Transformer(dim=embed_dim, n_heads=n_heads,
+                        mlp_ratio=mlp_ratio, qkv_bias=qkv_bias,
+                        p=dropout, attn_p=dropout) for _ in range(depth)
         ])
         self.norm = nn.LayerNorm(embed_dim, eps=1E-6)
         self.head = nn.Linear(embed_dim, n_classes)
 
+        self.downsample = nn.Conv3d(in_c, in_c,
+                                    kernel_size=dws_ratio, stride=dws_ratio)
+        self.upsample = nn.ConvTranspose3d(in_c, in_c,
+                                           kernel_size=dws_ratio, stride=dws_ratio)
+
     def forward(self, x):
-        n_samples = x.shape[0]
+        x = self.downsample(x)
+        x_shape = x.shape
+        n_samples = x_shape[0]
         x = self.patch_embed(x)
         cls_token = self.cls_token.expand(n_samples, -1, -1)
         x = torch.cat((cls_token, x), dim=1)
@@ -181,26 +189,28 @@ class VisionTransformer3D(nn.Module):
             x = transformer(x)
         x = self.norm(x)
         cls_token_final = x[:, 0]
-        x = self.head(cls_token_final)
+        x = self.head(cls_token_final).reshape(x_shape)
+        x = self.upsample(x)
         return x
 
 
 def test_vision_transformer3d():
     # Define the model parameters
-    img_size = 128
-    patch_size = 16
+    img_size = 240
+    patch_size = 8
     in_c = 1
-    n_classes = 1
+    n_classes = 48*48*48
     embed_dim = 512
     depth = 8
     n_heads = 8
-    mlp_ratio = 4.0
+    mlp_ratio = 8.0
     qkv_bias = True
     dropout = 0.0
+    dws_ratio = 5
 
     # Instantiate the VisionTransformer3D model
     model = VisionTransformer3D(
-        img_size=img_size,
+        img_size=int(img_size/dws_ratio),
         patch_size=patch_size,
         in_c=in_c,
         n_classes=n_classes,
@@ -209,11 +219,13 @@ def test_vision_transformer3d():
         n_heads=n_heads,
         mlp_ratio=mlp_ratio,
         qkv_bias=qkv_bias,
-        dropout=dropout
+        dropout=dropout,
+        dws_ratio=dws_ratio
     )
 
     # Print the model architecture (optional)
-    print(f'\nVanilla 3DVT Model size: {int(count_parameters(model)/1000000)}M\n')
+    print(f'\nLinearized 3DVT Model size: {
+          int(count_parameters(model)/1000000)}M\n')
     # print(model)
 
     # Create a random input tensor with the shape (batch_size, channels, depth, height, width)
@@ -222,19 +234,15 @@ def test_vision_transformer3d():
 
     # Pass the input tensor through the model
     start_time = time.time()
-    output = model(input_tensor)
+    output = model(input_tensor).view(input_tensor.shape)
     end_time = time.time()
     elapsed_time = end_time - start_time
 
     # Print the output shape
     print("Output shape:", output.shape)
 
-    # Check if the output shape is correct
-    assert output.shape == (
-        batch_size, n_classes), "Output shape is incorrect!"
-    
     print("Elapsed time: {:.6f} seconds\n".format(elapsed_time))
-    
+
     test_model_memory_usage(model, input_tensor)
 
     print("Test passed!")
