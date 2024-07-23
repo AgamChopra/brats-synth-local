@@ -46,10 +46,12 @@ class FourierNeuralOperator(nn.Module):
         out_features2 = out_features // 2
 
         self.spatial_layer = nn.Conv3d(
-            in_features, out_features1, kernel_size=1, stride=1)
+            in_features, out_features1, kernel_size=1, stride=1,
+            groups=in_features)
 
         self.frequency_layer = nn.Conv3d(
-            in_features*2, out_features2*2, kernel_size=1, stride=1)
+            in_features*2, out_features2*2, kernel_size=1, stride=1,
+            groups=in_features*2)
 
         self.non_linearity = nn.GELU()
         self.norm = nn.InstanceNorm3d(out_features)
@@ -71,9 +73,8 @@ class FNOBlock(nn.Module):
     def __init__(self, in_c, hid_c, out_c, dropout=0):
         super(FNOBlock, self).__init__()
         self.layers = nn.Sequential(FourierNeuralOperator(in_c, hid_c, dropout),
-                                    nn.Conv3d(hid_c, out_c, kernel_size=1),
-                                    nn.InstanceNorm3d(out_c),
-                                    nn.GELU())
+                                    nn.Conv3d(hid_c, out_c, kernel_size=1)
+                                    )
 
     def forward(self, x):
         y = self.layers(x)
