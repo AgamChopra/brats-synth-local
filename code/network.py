@@ -15,16 +15,39 @@ from linear_attention import VisionTransformerBlock
 from fourier_neural_operator import FNOBlock
 
 
+class DepthwiseFeedForwardBlock(nn.Module):
+    def __init__(self, in_c=1, dropout=0.3):
+        super(DepthwiseFeedForwardBlock, self).__init__()
+
+        self.passthrough = nn.Sequential(nn.Conv3d(in_c, in_c, kernel_size=1),
+                                         nn.Conv3d(in_c, in_c, kernel_size=3, groups=in_c))
+        self.gate = nn.Sequential(nn.Conv3d(in_c, in_c, kernel_size=1),
+                                  nn.Conv3d(
+                                      in_c, in_c, kernel_size=3, groups=in_c),
+                                  nn.InstanceNorm3d(in_c),
+                                  nn.GELU())
+        self.rectifire = nn.Sequential(nn.Conv3d(in_c, in_c, kernel_size=1),
+                                       nn.Dropout3d(dropout))
+
+    def forward(self, x):
+        y = self.passthrough(x) * self.gate(x)
+        y = pad3d(y, x)
+        y = self.rectifire(y)
+        y = x + y
+        return y
+
+
 class FourierGateAttentionBlock(nn.Module):
-    def __init__(self, in_c, out_c,
+    def __init__(self, in_c,
                  img_size, patch_size,
                  embed_dim=512, n_heads=8,
                  mlp_ratio=8, qkv_bias=True,
-                 hid_c=None, final_layer=False,
                  dropout_rate=0.3):
         super(FourierGateAttentionBlock, self).__init__()
+        out_c = in_c
         n_classes = img_size ** 3
-        vision_block = VisionTransformerBlock(
+
+        self.vision_block = VisionTransformerBlock(
             img_size=img_size,
             patch_size=patch_size,
             in_c=in_c,
@@ -35,12 +58,118 @@ class FourierGateAttentionBlock(nn.Module):
             mlp_ratio=mlp_ratio,
             qkv_bias=qkv_bias,
             dropout=dropout_rate
-            )
-        frequency_block = FNOBlock(in_c, embed_dim, out_c, dropout_rate)
+        )
+
+        self.frequency_block = FNOBlock(in_c, embed_dim, out_c, dropout_rate)
+
+        self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c, kernel_size=1),
+                                         nn.Dropout3d(dropout_rate))
 
     def forward(self, x):
+        y1 = self.frequency_block(x)
+        y2 = self.vision_block(x)
+        y = self.merge_block(torch.cat((y1, y2), dim=1))
+        y = x + y
+        return y
 
-        return
+
+class TransformerBlock(nn.Module):
+    def __init__(self, in_c,
+                 img_size, patch_size,
+                 embed_dim=512, n_heads=8,
+                 mlp_ratio=8, qkv_bias=True,
+                 dropout_rate=0.3):
+        super(TransformerBlock, self).__init__()
+
+        self.layers = nn.Sequential(
+            FourierGateAttentionBlock(in_c,
+                                      img_size, patch_size,
+                                      embed_dim, n_heads,
+                                      mlp_ratio, qkv_bias,
+                                      dropout_rate),
+            DepthwiseFeedForwardBlock(in_c, dropout_rate)
+        )
+
+    def forward(self, x):
+        y = self.layers(x)
+        return y
+
+
+class TransformerBlockDown(nn.Module):
+    def __init__(self, in_c,
+                 img_size, patch_size,
+                 embed_dim=512, n_heads=8,
+                 mlp_ratio=8, qkv_bias=True,
+                 dropout_rate=0.3):
+        super(TransformerBlockDown, self).__init__()
+
+        self.layers = nn.ModuleList([
+            TransformerBlock(in_c,
+                             img_size, patch_size,
+                             embed_dim=512, n_heads=8,
+                             mlp_ratio=8, qkv_bias=True,
+                             dropout_rate=0.3),
+            nn.Conv3d(in_c, 2 * in_c, kernel_size=2, stride=2)]
+        )
+
+    def forward(self, x):
+        y_skip = self.layers[0](x)
+        y = self.layers[1](x)
+        return y, y_skip
+
+
+class TransformerBlockUp(nn.Module):
+    def __init__(self, in_c,
+                 img_size, patch_size,
+                 embed_dim=512, n_heads=8,
+                 mlp_ratio=8, qkv_bias=True,
+                 dropout_rate=0.3):
+        super(TransformerBlockUp, self).__init__()
+
+        self.layers = nn.Sequential(
+            nn.Conv3d(in_c, int(in_c/2), kernel_size=1),
+            TransformerBlock(int(in_c/2),
+                             img_size, patch_size,
+                             embed_dim=512, n_heads=8,
+                             mlp_ratio=8, qkv_bias=True,
+                             dropout_rate=0.3),
+            nn.ConvTranspose3d(int(in_c/2), int(in_c/4),
+                               kernel_size=2, stride=2)
+        )
+
+    def forward(self, x):
+        y = self.layers(x)
+        return y
+
+
+class TransformerBlockLatant(nn.Module):
+    def __init__(self, in_c,
+                 img_size, patch_size,
+                 embed_dim=512, n_heads=8,
+                 mlp_ratio=8, qkv_bias=True,
+                 dropout_rate=0.3, mask_downsample=6,
+                 noise=True):
+        super(TransformerBlockUp, self).__init__()
+        self.noise = noise
+        self.noise_mask_layer = nn.Sequential(nn.Conv3d(1, 1,
+                                                        kernel_size=mask_downsample,
+                                                        stride=mask_downsample),
+                                              nn.InstanceNorm3d(1),
+                                              nn.Conv3d(1, in_c, kernel_size=1))
+
+        self.layer = TransformerBlock(in_c,
+                                      img_size, patch_size,
+                                      embed_dim=512, n_heads=8,
+                                      mlp_ratio=8, qkv_bias=True,
+                                      dropout_rate=0.3)
+        self.upsampling = nn.ConvTranspose3d(in_c, int(in_c/2),
+                                             kernel_size=2, stride=2)
+
+    def forward(self, x, mask):
+        y = x + self.mask_layer(mask + (torch.rand_like(mask,
+                                device=mask.device) if self.noise else 0.))
+        y = self.layers(y)
+        return y
 
 
 class AttentionGrid(nn.Module):
