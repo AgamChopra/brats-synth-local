@@ -34,7 +34,8 @@ def slice_augment(x, min_slices=12):
     target_height = torch.randint(min_slices, H + 1, (1,)).item()
     target_width = torch.randint(min_slices, W + 1, (1,)).item()
 
-    downsampled = F.interpolate(x, size=(target_depth, target_height, target_width), mode='trilinear', align_corners=False)
+    downsampled = F.interpolate(x, size=(
+        target_depth, target_height, target_width), mode='trilinear', align_corners=False)
     augmented = F.interpolate(downsampled, size=(D, H, W), mode='nearest')
 
     return augmented
@@ -92,7 +93,8 @@ def get_gaussian_noise_mask(x):
     sigma = torch.rand(1).item() * 10
     gauss = torch.randn(D, H, W) * sigma + mean
     gauss = (gauss - gauss.min()) / (gauss.max() - gauss.min())
-    mask = torch.where(gauss > (random.randint(200, 600) * 0.001), torch.ones_like(x), torch.zeros_like(x))
+    mask = torch.where(gauss > (random.randint(200, 600) * 0.001),
+                       torch.ones_like(x), torch.zeros_like(x))
     return mask
 
 
@@ -140,7 +142,8 @@ def get_rand_tissue_type_mask(x):
             contrast_range[0] = contrast_range[1] - 0.35
         else:
             contrast_range[1] = contrast_range[0] + 0.35
-    mask = torch.where((x > contrast_range[0]) & (x < contrast_range[1]), torch.ones_like(x), torch.zeros_like(x))
+    mask = torch.where((x > contrast_range[0]) & (
+        x < contrast_range[1]), torch.ones_like(x), torch.zeros_like(x))
     return mask
 
 
@@ -159,10 +162,13 @@ def get_rand_blob_mask(x, blob_size_range=(8, 50)):
     num_blobs = random.randint(10, 35)
 
     for _ in range(num_blobs):
-        blob_size = torch.randint(blob_size_range[0], blob_size_range[1], (1,)).item()
-        start_indices = [torch.randint(0, max(1, dim - blob_size), (1,)).item() for dim in x.shape]
+        blob_size = torch.randint(
+            blob_size_range[0], blob_size_range[1], (1,)).item()
+        start_indices = [torch.randint(
+            0, max(1, dim - blob_size), (1,)).item() for dim in x.shape]
         blob_mask = torch.zeros_like(x)
-        slices = tuple(slice(start, start + blob_size) for start in start_indices)
+        slices = tuple(slice(start, start + blob_size)
+                       for start in start_indices)
         blob_mask[slices] = 1
         mask = torch.max(mask, blob_mask)
 
@@ -264,7 +270,8 @@ def load_patient(path, filename, nrm=True):
     Returns:
         torch.tensor: Loaded patient data tensor.
     """
-    image = torch.from_numpy(nib.load(os.path.join(path, os.path.join(filename, filename + '-t1n.nii.gz'))).get_fdata())[None, None, ...].float()
+    image = torch.from_numpy(nib.load(os.path.join(path, os.path.join(
+        filename, filename + '-t1n.nii.gz'))).get_fdata())[None, None, ...].float()
     if nrm:
         image = norm(image)
     return image
@@ -307,8 +314,10 @@ class DataLoader:
         norm (bool, optional): Whether to normalize the data. Default is True.
         path (str, optional): Path to the directory containing the data. Default is '/home/agam/Desktop/brats_2024_local_impainting/TrainingData/'.
     """
+
     def __init__(self, batch=1, augment=True, aug_thresh=0.05, workers=4, norm=True, path='/home/agam/Desktop/brats_2024_local_impainting/TrainingData/'):
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        self.executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=workers)
         self.id = 0
         self.augment = augment
         self.aug_thresh = aug_thresh
@@ -316,7 +325,8 @@ class DataLoader:
         self.path = path
         self.samples = list_folders(self.path)
         self.nrm = norm
-        self.mask_modes = ['box', 'blob', 'noise_uniform', 'noise_gaussian', 'reveen', 'tissue', 'blended']
+        self.mask_modes = ['box', 'blob', 'reveen', 'tissue',
+                           'blended', 'noise_gaussian']
         self.randomize()
         self.future_batch = None
         self.pre_fetch_next_batch()
@@ -342,7 +352,8 @@ class DataLoader:
             new_samples = self.samples[self.id:self.id + self.batch]
             self.id += self.batch
 
-        self.future_batch = self.executor.submit(self.load_batch_dataset_async, new_samples)
+        self.future_batch = self.executor.submit(
+            self.load_batch_dataset_async, new_samples)
 
     def load_batch_dataset_async(self, sample_list):
         """
@@ -354,7 +365,8 @@ class DataLoader:
         Returns:
             torch.tensor: Batch of loaded samples.
         """
-        futures = [self.executor.submit(load_patient, self.path, sample, self.nrm) for sample in sample_list]
+        futures = [self.executor.submit(
+            load_patient, self.path, sample, self.nrm) for sample in sample_list]
         results = [future.result() for future in futures]
         return torch.cat(results, dim=0)
 
@@ -370,20 +382,24 @@ class DataLoader:
 
         if self.augment and random.uniform(0, 1) > self.aug_thresh:
             if random.uniform(0, 1) > 0.3:
-                batch_raw = torch.cat([slice_augment(batch_raw[:, i:i + 1], 20) for i in range(batch_raw.shape[1])], dim=1)
+                batch_raw = torch.cat([slice_augment(
+                    batch_raw[:, i:i + 1], 20) for i in range(batch_raw.shape[1])], dim=1)
             batch_raw = augment_batch(batch_raw)
 
-        batch_mask = masking(batch_raw, mode=self.mask_modes[random.randint(0, len(self.mask_modes) - 1)])
+        batch_mask = masking(
+            batch_raw, mode=self.mask_modes[random.randint(0, len(self.mask_modes) - 1)])
         return batch_raw, batch_mask
 
 
 if __name__ == '__main__':
     from tqdm import trange
-    loader = DataLoader(augment=True, batch=1, workers=4, path='/home/agam/Desktop/brats_2024_local_impainting/TrainingData/')
+    loader = DataLoader(augment=True, batch=1, workers=4,
+                        path='/home/agam/Desktop/brats_2024_local_impainting/TrainingData/')
     for i in trange(1300):
         x, mask = loader.load_batch()
         x = x[0:2]
         mask = mask[0:2]
         x_ = x * (mask < 0.5)
 
-        show_images(torch.cat((torch.permute(x, (0, 1, 4, 2, 3)), torch.permute(x, (0, 1, 4, 3, 2)), torch.permute(x_, (0, 1, 4, 2, 3)), torch.permute(x_, (0, 1, 4, 3, 2))), dim=0), 8, 4, dpi=250)
+        show_images(torch.cat((torch.permute(x, (0, 1, 4, 2, 3)), torch.permute(x, (0, 1, 4, 3, 2)), torch.permute(
+            x_, (0, 1, 4, 2, 3)), torch.permute(x_, (0, 1, 4, 3, 2))), dim=0), 8, 4, dpi=250)
