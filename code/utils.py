@@ -30,7 +30,7 @@ def get_memory_usage():
 
     # Get memory info
     info = nvmlDeviceGetMemoryInfo(handle)
-    
+
     return (info.total / 1024**2, info.free / 1024**2, info.used / 1024**2)
 
 
@@ -39,8 +39,8 @@ def test_model_memory_usage(model, input_tensor):
     (t, f, u) = get_memory_usage()
     print(f"Total memory: {t} MB")
     print(f"Free memory: {f} MB")
-    print(f"Used memory: {u} MB")   
-    
+    print(f"Used memory: {u} MB")
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     input_tensor = input_tensor.to(device)
@@ -55,14 +55,14 @@ def test_model_memory_usage(model, input_tensor):
     # Perform forward pass
     start_time = time.time()
     output = model(input_tensor)
-    
+
     # Measure memory usage after forward pass
     (t, f, u2) = get_memory_usage()
     print(f"Memory used by model after forward pass: {u2 - u} MB")
-    
+
     # Perform backward pass
     output.sum().backward()
-    
+
     # Measure memory usage after backward pass
     (t, f, u3) = get_memory_usage()
     print(f"Memory used by model after backward pass: {u3 - u} MB")
@@ -79,8 +79,6 @@ def test_model_memory_usage(model, input_tensor):
 
     # Print output shape and elapsed time
     print("Elapsed time: {:.6f} seconds".format(elapsed_time))
-
-
 
 
 def count_parameters(model):
@@ -529,8 +527,8 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
     plt.xlabel('Epoch')
     plt.ylabel('Normalized Score')
     plt.legend()
-    save_plot(filepath=f'{path}{
-              identity}_norm_validation_metrics.png' if path else None)
+    save_plot(
+        filepath=f'{path}{identity}_norm_validation_metrics.png' if path else None)
 
     plt.figure(dpi=dpi)
     fig, axs = plt.subplots(2, 2, figsize=(10, 10), dpi=dpi)
@@ -541,8 +539,8 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
     plt.xlabel('Epoch')
     plt.ylabel('Score')
     plt.tight_layout()
-    save_plot(filepath=f'{path}{
-              identity}_validation_metrics.png' if path else None)
+    save_plot(
+        filepath=f'{path}{identity}_validation_metrics.png' if path else None)
 
 
 def save_plot(filepath=None, transparent=False, dpi=200):

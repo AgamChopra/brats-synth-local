@@ -8,7 +8,6 @@ Created on June 2023
 """
 import torch
 import torch.nn as nn
-import time
 
 from utils import count_parameters, test_model_memory_usage
 
@@ -224,8 +223,9 @@ def test_vision_transformer3d():
     )
 
     # Print the model architecture (optional)
-    print(f'\nVanilla 3DVT Model size: {
-          int(count_parameters(model)/1000000)}M\n')
+    print(
+        f'\nVanilla 3DVT Model size: {int(count_parameters(model)/1000000)}M\n'
+    )
     # print(model)
 
     # Create a random input tensor with the shape (batch_size, channels, depth, height, width)
