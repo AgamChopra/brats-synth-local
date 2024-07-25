@@ -145,22 +145,22 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         neural_network(input_image).float()
                     synthetic_masked_region = mask * y
 
-                    errorA = 0.25 * sum([efunc(known_masked_region,
+                    errorA = sum([efunc(known_masked_region,
                                         synthetic_masked_region, mask)
-                                         for efunc in criterion_masked])
-                    errorB = 0.55 * sum([lambdas[i] * criterion[i](x, y)
-                                         for i in range(len(criterion))])
-                    errorC = 0.2 * critic(torch.cat((input_image,
-                                                     synthetic_masked_region),
-                                                    dim=1).float()).mean()
+                                  for efunc in criterion_masked])
+                    errorB = sum([lambdas[i] * criterion[i](x, y)
+                                  for i in range(len(criterion))])
+                    errorC = critic(torch.cat((input_image,
+                                               synthetic_masked_region),
+                                              dim=1).float()).mean()
 
-                    error = errorA + errorB - errorC
+                    error = 10 * errorA + 10 * errorB - 0.5 * errorC
 
                 scaler.scale(error).backward()
                 scaler.step(optimizer)
                 scaler.update()
 
-                losses.append(error.item())
+                losses.append(errorC.item())
 
             else:
                 # Critic Optimization

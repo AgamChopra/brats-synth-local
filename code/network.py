@@ -60,7 +60,8 @@ class FourierGateAttentionBlock(nn.Module):
             dropout=dropout_rate
         )
 
-        self.frequency_block = FNOBlock(in_c, embed_dim, out_c, dropout_rate)
+        self.frequency_block = FNOBlock(
+            in_c, int(embed_dim/2) * in_c, out_c, dropout_rate)
 
         self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c, kernel_size=1),
                                          nn.Dropout3d(dropout_rate))
@@ -149,7 +150,7 @@ class TransformerBlockLatant(nn.Module):
                  mlp_ratio=8, qkv_bias=True,
                  dropout_rate=0.3, mask_downsample=6,
                  noise=True):
-        super(TransformerBlockUp, self).__init__()
+        super(TransformerBlockLatant, self).__init__()
         self.noise = noise
         self.noise_mask_layer = nn.Sequential(nn.Conv3d(1, 1,
                                                         kernel_size=mask_downsample,
@@ -157,17 +158,18 @@ class TransformerBlockLatant(nn.Module):
                                               nn.InstanceNorm3d(1),
                                               nn.Conv3d(1, in_c, kernel_size=1))
 
-        self.layer = TransformerBlock(in_c,
-                                      img_size, patch_size,
-                                      embed_dim=512, n_heads=8,
-                                      mlp_ratio=8, qkv_bias=True,
-                                      dropout_rate=0.3)
-        self.upsampling = nn.ConvTranspose3d(in_c, int(in_c/2),
-                                             kernel_size=2, stride=2)
+        self.layers = nn.Sequential(
+            TransformerBlock(in_c,
+                             img_size, patch_size,
+                             embed_dim=512, n_heads=8,
+                             mlp_ratio=8, qkv_bias=True,
+                             dropout_rate=0.3),
+            nn.ConvTranspose3d(in_c, int(in_c/2),
+                               kernel_size=2, stride=2))
 
     def forward(self, x, mask):
-        y = x + self.mask_layer(mask + (torch.rand_like(mask,
-                                device=mask.device) if self.noise else 0.))
+        y = x + self.noise_mask_layer(mask * (
+            torch.rand_like(mask, device=mask.device) if self.noise else 1.))
         y = self.layers(y)
         return y
 
@@ -284,7 +286,7 @@ class Block(nn.Module):
         y = self.out_block(y)
 
         if self.pool:
-            y_ = self.pool_block(y)
-            return y_, y
+            y_out = self.pool_block(y)
+            return y_out, y
         else:
             return y

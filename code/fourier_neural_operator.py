@@ -39,28 +39,33 @@ def get_filtered_inverse_fft(freq, crop_ratio=0.1):
     return reconstructed_image
 
 
+# add automatic gating of frequencies instead of low pass filtering
 class FourierNeuralOperator(nn.Module):
     def __init__(self, in_features, out_features, dropout=0.):
         super(FourierNeuralOperator, self).__init__()
-        out_features1 = (out_features // 2) + (out_features % 2)
-        out_features2 = out_features // 2
-
         self.spatial_layer = nn.Conv3d(
-            in_features, out_features1, kernel_size=1, stride=1,
+            in_features, out_features, kernel_size=1, stride=1,
             groups=in_features)
 
         self.frequency_layer = nn.Conv3d(
-            in_features*2, out_features2*2, kernel_size=1, stride=1,
+            in_features*2, out_features*2, kernel_size=1, stride=1,
             groups=in_features*2)
 
         self.non_linearity = nn.GELU()
         self.norm = nn.InstanceNorm3d(out_features)
         self.drop = nn.Dropout(dropout)
 
+        self.gate = nn.Sequential(
+            nn.Conv3d(
+                in_features, out_features, kernel_size=1, stride=1),
+            nn.InstanceNorm3d(),
+            nn.Sigmoid()
+        )
+
     def forward(self, x):
         y_spatial = self.spatial_layer(x)
         y = get_fft(x)
-        y = self.frequency_layer(y)
+        y = self.frequency_layer(y) * self.gate(x)
         y = get_filtered_inverse_fft(y)
         y = torch.cat((y_spatial, y), dim=1)
         y = self.non_linearity(y)
@@ -73,7 +78,7 @@ class FNOBlock(nn.Module):
     def __init__(self, in_c, hid_c, out_c, dropout=0):
         super(FNOBlock, self).__init__()
         self.layers = nn.Sequential(FourierNeuralOperator(in_c, hid_c, dropout),
-                                    nn.Conv3d(hid_c, out_c, kernel_size=1)
+                                    nn.Conv3d(hid_c*2, out_c, kernel_size=1)
                                     )
 
     def forward(self, x):
