@@ -124,22 +124,26 @@ class TransformerBlockUp(nn.Module):
                  img_size, patch_size,
                  embed_dim=512, n_heads=8,
                  mlp_ratio=8, qkv_bias=True,
-                 dropout_rate=0.3):
+                 dropout_rate=0.3, final=False):
         super(TransformerBlockUp, self).__init__()
 
+        self.final = final
         self.layers = nn.Sequential(
             nn.Conv3d(in_c, int(in_c/2), kernel_size=1),
             TransformerBlock(int(in_c/2),
                              img_size, patch_size,
                              embed_dim=512, n_heads=8,
                              mlp_ratio=8, qkv_bias=True,
-                             dropout_rate=0.3),
-            nn.ConvTranspose3d(int(in_c/2), int(in_c/4),
-                               kernel_size=2, stride=2)
+                             dropout_rate=0.3)
         )
+        if not self.final:
+            self.up = nn.ConvTranspose3d(int(in_c/2), int(in_c/4),
+                                         kernel_size=2, stride=2)
 
     def forward(self, x):
         y = self.layers(x)
+        if not self.final:
+            y = self.up(y)
         return y
 
 

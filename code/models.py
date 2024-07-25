@@ -41,28 +41,28 @@ class Global_UNet(nn.Module):
         self.device2 = device2
 
         self.downsample = nn.Sequential(
-            nn.Conv3d(in_c, in_c, kernel_size=5, stride=5),
+            nn.Conv3d(in_c, in_c * 2, kernel_size=5, stride=5),
             nn.InstanceNorm3d(in_c),
             nn.GELU()
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c, img_size=48, patch_size=8,
+            TransformerBlockDown(in_c * 2, img_size=48, patch_size=8,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c, img_size=24, patch_size=6,
+            TransformerBlockDown(2 * in_c * 2, img_size=24, patch_size=6,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(4 * in_c, img_size=12, patch_size=4,
+            TransformerBlockDown(4 * in_c * 2, img_size=12, patch_size=4,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio)
         ]).to(device=device1)
 
         self.latent_layer = nn.ModuleList([
-            TransformerBlockLatant(8 * in_c, img_size=6, patch_size=2,
+            TransformerBlockLatant(8 * in_c * 2, img_size=6, patch_size=2,
                                    dropout_rate=dropout_rate,
                                    embed_dim=embed_dim, qkv_bias=qkv_bias,
                                    mlp_ratio=mlp_ratio,
@@ -71,25 +71,25 @@ class Global_UNet(nn.Module):
         ]).to(device=device1)
 
         self.decoder_layers = nn.ModuleList([
-            TransformerBlockUp(8 * in_c, img_size=6, patch_size=2,
+            TransformerBlockUp(8 * in_c * 2, img_size=12, patch_size=4,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(6 * in_c, img_size=6, patch_size=2,
+            TransformerBlockUp(4 * in_c * 2, img_size=24, patch_size=6,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(4 * in_c, img_size=6, patch_size=2,
+            TransformerBlockUp(2 * in_c * 2, img_size=48, patch_size=8,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
-                               mlp_ratio=mlp_ratio)
+                               mlp_ratio=mlp_ratio, final=True)
         ]).to(device=device2)
 
         self.upsample = nn.Sequential(
-            nn.Conv3d(2 * in_c, out_c, kernel_size=1),
+            nn.ConvTranspose3d(in_c * 2, in_c, kernel_size=5, stride=5),
             nn.InstanceNorm3d(in_c),
             nn.GELU(),
-            nn.ConvTranspose3d(in_c, in_c, kernel_size=5, stride=5)
+            nn.Conv3d(in_c, out_c, kernel_size=1)
         ).to(device=device2)
 
     def forward(self, x, mask):
@@ -111,6 +111,7 @@ class Global_UNet(nn.Module):
         y = y.to(device=self.device2)
         for layer, encoder_output in zip(self.decoder_layers,
                                          encoder_outputs[::-1]):
+            # print(y.shape, encoder_output.shape)
             y = layer(
                 torch.cat((pad3d(y, encoder_output), encoder_output), dim=1))
 
@@ -346,7 +347,7 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     mask = torch.ones((B, 1, 240, 240, 240), device=device)
 
     model = Global_UNet(in_c=ic, out_c=oc,
-                        embed_dim=16, n_heads=2,
+                        embed_dim=8, n_heads=2,
                         mlp_ratio=2, qkv_bias=True,
                         dropout_rate=0.,
                         mask_downsample=40,
