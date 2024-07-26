@@ -200,9 +200,11 @@ class Attention_UNet(nn.Module):
 class DepthwiseSeparableConv3d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(DepthwiseSeparableConv3d, self).__init__()
-        self.depthwise = nn.Conv3d(in_channels, in_channels, kernel_size=kernel_size,
-                                   stride=stride, groups=in_channels, padding=kernel_size//2)
-        self.pointwise = nn.Conv3d(in_channels, out_channels, kernel_size=1)
+        self.depthwise = nn.utils.spectral_norm(
+            nn.Conv3d(in_channels, in_channels, kernel_size=kernel_size,
+                      stride=stride, groups=in_channels))
+        self.pointwise = nn.utils.spectral_norm(
+            nn.Conv3d(in_channels, out_channels, kernel_size=1))
 
     def forward(self, x):
         x = self.depthwise(x)
@@ -219,28 +221,28 @@ class CriticA(nn.Module):
         fact (int, optional): Scaling factor for the number of channels. Default is 1.
     """
 
-    def __init__(self, in_c=1, fact=1):
+    def __init__(self, in_c=1, fact=8):
         super(CriticA, self).__init__()
         self.c = fact
 
         self.E = nn.Sequential(
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c, self.c * 2, kernel_size=3, stride=3, padding=1)),
+                nn.Conv3d(in_c, self.c * 2, kernel_size=3, stride=3)),
             nn.GELU(),
-            nn.utils.spectral_norm(
-                DepthwiseSeparableConv3d(self.c * 2, self.c * 4, kernel_size=3, stride=2)),
+            DepthwiseSeparableConv3d(
+                self.c * 2, self.c * 4, kernel_size=2, stride=2),
             nn.GELU(),
-            nn.utils.spectral_norm(
-                DepthwiseSeparableConv3d(self.c * 4, self.c * 8, kernel_size=3, stride=3)),
+            DepthwiseSeparableConv3d(
+                self.c * 4, self.c * 8, kernel_size=3, stride=3),
             nn.GELU(),
-            nn.utils.spectral_norm(
-                DepthwiseSeparableConv3d(self.c * 8, self.c * 16, kernel_size=3, stride=2)),
+            DepthwiseSeparableConv3d(
+                self.c * 8, self.c * 16, kernel_size=2, stride=2),
             nn.GELU(),
-            nn.utils.spectral_norm(
-                DepthwiseSeparableConv3d(self.c * 16, self.c * 32, kernel_size=3, stride=3)),
+            DepthwiseSeparableConv3d(
+                self.c * 16, self.c * 32, kernel_size=3, stride=3),
             nn.GELU(),
-            nn.utils.spectral_norm(
-                DepthwiseSeparableConv3d(self.c * 32, self.c * 64, kernel_size=3, stride=2)),
+            DepthwiseSeparableConv3d(
+                self.c * 32, self.c * 64, kernel_size=2, stride=2),
             nn.GELU(),
             nn.utils.spectral_norm(
                 nn.Conv3d(self.c * 64, 1, kernel_size=1, stride=1))
@@ -360,15 +362,15 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     mask = torch.ones((B, 1, 240, 240, 240), device=device)
 
     model = Global_UNet(in_c=ic, out_c=oc,
-                        embed_dim=8, n_heads=2,
+                        embed_dim=4, n_heads=2,
                         mlp_ratio=2, qkv_bias=True,
                         dropout_rate=0.,
                         mask_downsample=40,
                         noise=True, device1=device, device2=device)
     print(f'Model size: {int(count_parameters(model)/1000000)}M')
 
-    critic = CriticA(in_c=oc, fact=1).to(device)
-    print(f'Model size: {int(count_parameters(critic)/1000000)}M')
+    critic = CriticA(in_c=oc, fact=32).to(device)
+    print(f'Model size: {count_parameters(critic)/1000000}M')
 
     b = model(a, mask)
     c = critic(b)
