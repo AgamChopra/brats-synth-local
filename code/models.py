@@ -197,6 +197,19 @@ class Attention_UNet(nn.Module):
         return y
 
 
+class DepthwiseSeparableConv3d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride):
+        super(DepthwiseSeparableConv3d, self).__init__()
+        self.depthwise = nn.Conv3d(in_channels, in_channels, kernel_size=kernel_size,
+                                   stride=stride, groups=in_channels, padding=kernel_size//2)
+        self.pointwise = nn.Conv3d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        return x
+
+
 class CriticA(nn.Module):
     """
     Critic model for adversarial training.
@@ -212,30 +225,30 @@ class CriticA(nn.Module):
 
         self.E = nn.Sequential(
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c, self.c * 2, kernel_size=3, stride=3)),
+                nn.Conv3d(in_c, self.c * 2, kernel_size=3, stride=3, padding=1)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 2, self.c * 4, kernel_size=2, stride=2)),
+                DepthwiseSeparableConv3d(self.c * 2, self.c * 4, kernel_size=3, stride=2)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 4, self.c * 8, kernel_size=3, stride=3)),
+                DepthwiseSeparableConv3d(self.c * 4, self.c * 8, kernel_size=3, stride=3)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 8, self.c * 16, kernel_size=2, stride=2)),
+                DepthwiseSeparableConv3d(self.c * 8, self.c * 16, kernel_size=3, stride=2)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 16, self.c * 32, kernel_size=3, stride=3)),
+                DepthwiseSeparableConv3d(self.c * 16, self.c * 32, kernel_size=3, stride=3)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 32, self.c * 64, kernel_size=2, stride=2)),
+                DepthwiseSeparableConv3d(self.c * 32, self.c * 64, kernel_size=3, stride=2)),
             nn.GELU(),
             nn.utils.spectral_norm(
-                nn.Conv3d(in_c * 64, 1, kernel_size=1, stride=1))
+                nn.Conv3d(self.c * 64, 1, kernel_size=1, stride=1))
         )
 
     def forward(self, x):
         target_shape = x.shape[2:]
-        y = pad3d(x.float(), max(target_shape))
+        y = pad3d(x.float(), target_shape)
         y = self.E(y).squeeze()
         return y
 
@@ -351,7 +364,7 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
                         mlp_ratio=2, qkv_bias=True,
                         dropout_rate=0.,
                         mask_downsample=40,
-                        noise=True,device1=device,device2=device)
+                        noise=True, device1=device, device2=device)
     print(f'Model size: {int(count_parameters(model)/1000000)}M')
 
     critic = CriticA(in_c=oc, fact=1).to(device)
