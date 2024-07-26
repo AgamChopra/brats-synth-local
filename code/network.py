@@ -107,9 +107,9 @@ class TransformerBlockDown(nn.Module):
         self.layers = nn.ModuleList([
             TransformerBlock(in_c,
                              img_size, patch_size,
-                             embed_dim=512, n_heads=8,
-                             mlp_ratio=8, qkv_bias=True,
-                             dropout_rate=0.3),
+                             embed_dim, n_heads,
+                             mlp_ratio, qkv_bias,
+                             dropout_rate),
             nn.Conv3d(in_c, 2 * in_c, kernel_size=2, stride=2)]
         )
 
@@ -132,9 +132,9 @@ class TransformerBlockUp(nn.Module):
             nn.Conv3d(in_c, int(in_c/2), kernel_size=1),
             TransformerBlock(int(in_c/2),
                              img_size, patch_size,
-                             embed_dim=512, n_heads=8,
-                             mlp_ratio=8, qkv_bias=True,
-                             dropout_rate=0.3)
+                             embed_dim, n_heads,
+                             mlp_ratio, qkv_bias,
+                             dropout_rate)
         )
         if not self.final:
             self.up = nn.ConvTranspose3d(int(in_c/2), int(in_c/4),
@@ -165,9 +165,9 @@ class TransformerBlockLatant(nn.Module):
         self.layers = nn.Sequential(
             TransformerBlock(in_c,
                              img_size, patch_size,
-                             embed_dim=512, n_heads=8,
-                             mlp_ratio=8, qkv_bias=True,
-                             dropout_rate=0.3),
+                             embed_dim, n_heads,
+                             mlp_ratio, qkv_bias,
+                             dropout_rate),
             nn.ConvTranspose3d(in_c, int(in_c/2),
                                kernel_size=2, stride=2))
 
