@@ -383,7 +383,7 @@ class DataLoader:
         if self.augment and random.uniform(0, 1) > self.aug_thresh:
             if random.uniform(0, 1) > 0.3:
                 batch_raw = torch.cat([slice_augment(
-                    batch_raw[:, i:i + 1], 20) for i in range(batch_raw.shape[1])], dim=1)
+                    batch_raw[:, i:i + 1], 60) for i in range(batch_raw.shape[1])], dim=1)
             batch_raw = augment_batch(batch_raw)
 
         batch_mask = masking(
