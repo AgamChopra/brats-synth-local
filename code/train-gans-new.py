@@ -17,9 +17,9 @@ from tqdm import trange
 
 import dataloader
 import models
+from grokfast import gradfilter_ema
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
-from utils import SSIMLoss, GMELoss3D, Mask_L1Loss, Mask_MSELoss
-from utils import grad_penalty
+from utils import SSIMLoss, GMELoss3D, grad_penalty
 
 # Set PyTorch printing precision
 torch.set_printoptions(precision=8)
@@ -33,7 +33,8 @@ torch.backends.cudnn.allow_tf32 = True
 def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
           device='cpu', model_path=None, critic_path=None, n=1,
           beta1=0.5, beta2=0.999, Lambda_penalty=10, dropout=0.1,
-          HYAK=False, identity='', device1='cpu', device2='cpu'):
+          HYAK=False, identity='', device1='cpu', device2='cpu',
+          agrok_lpha=0.98, grok_lamb=2.):
     """
     Training function for the model.
 
@@ -55,7 +56,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     print(device)
 
     # Initialize models
-    neural_network = models.Global_UNet(
+    generator = models.Global_UNet(
         in_c=1,
         out_c=1,
         embed_dim=512,
@@ -67,30 +68,31 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         noise=True,
         device1=device1,
         device2=device2
-        )
+    )
     print(
-        f'Gen. size: {models.count_parameters(neural_network)/1000000}M')
+        f'Gen. size: {models.count_parameters(generator)/1000000}M')
     if model_path is not None:
-        state_dict = torch.load(model_path)#, map_location=device)
-        neural_network.load_state_dict(state_dict, strict=True)
+        state_dict = torch.load(model_path)
+        generator.load_state_dict(state_dict, strict=True)
 
     critic = models.CriticA(in_c=2, fact=8).to(device2)
     print(
-        f'Crit. size: {models.count_parameters(neural_network)/1000000}M')
+        f'Crit. size: {models.count_parameters(generator)/1000000}M')
     if critic_path is not None:
         try:
-            state_dict = torch.load(critic_path, map_location=device2)
+            state_dict = torch.load(critic_path)
             critic.load_state_dict(state_dict, strict=True)
         except Exception:
             print(f"{critic_path} not found!")
 
     # Initialize optimizers
-    optimizer = torch.optim.AdamW(neural_network.parameters(), lr)
+    grads = None
+    gradsC = None
+    optimizer = torch.optim.AdamW(generator.parameters(), lr)
     optimizerC = torch.optim.AdamW(
         critic.parameters(), lr, betas=(beta1, beta2))
 
     # Initialize loss functions and criteria
-    criterion_masked = [Mask_MSELoss(), Mask_L1Loss()]
     criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
                  GMELoss3D(device=device),
                  nn.L1Loss()]
@@ -134,7 +136,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # Training loop
     for epoch in range(epochs):
         print(f'Epoch {epoch}:')
-        neural_network.train()
+        generator.train()
         critic.train()
 
         for itervar in trange(iterations):
@@ -142,52 +144,41 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             if x is None or mask is None:
                 print("Batch returned None values.")
                 continue
-
-            x, mask = x.float().to(device), mask.float().to(device)
-            whole_mask = (x > 0.).float().to(device)
-
-            known_masked_region = x * mask
+            x, mask = x.float().to(device1), mask.float().to(device1)
             input_image = (x > 0) * ((mask < 0.5) * x)
-            input_image = torch.cat((input_image, mask), dim=1)
 
             if (itervar + 1) % 5 == 0:
                 # Generator Optimization
                 optimizer.zero_grad()
                 with autocast():
-                    y = whole_mask * \
-                        neural_network(input_image).float()
-                    synthetic_masked_region = mask * y
+                    y = generator(input_image, mask).float()
 
-                    errorA = sum([efunc(known_masked_region,
-                                        synthetic_masked_region, mask)
-                                  for efunc in criterion_masked])
-                    errorB = sum([lambdas[i] * criterion[i](x, y)
-                                  for i in range(len(criterion))])
-                    errorC = critic(torch.cat((input_image,
-                                               synthetic_masked_region),
-                                              dim=1).float()).mean()
+                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
+                                     for i in range(len(criterion))])
+                    error_gans = critic(
+                        torch.cat((input_image.to(device2), y), dim=1).float()).mean()
 
-                    error = 10 * errorA + 10 * errorB - 0.5 * errorC
+                    error = 10 * error_sup - 0.5 * error_gans
 
                 scaler.scale(error).backward()
+                scaler.unscale_(optimizer)
+                grads = gradfilter_ema(
+                    generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
                 scaler.step(optimizer)
                 scaler.update()
 
-                losses.append(errorC.item())
+                losses.append(error_gans.item())
 
             else:
                 # Critic Optimization
                 optimizerC.zero_grad()
                 with autocast():
-                    y = whole_mask.detach() * neural_network(
-                        input_image).float()
-                    synthetic_masked_region = mask * y
+                    y = generator(input_image, mask).float()
 
                     real_x = torch.cat(
-                        (input_image, known_masked_region), dim=1).float()
+                        (input_image, x), dim=1).float().to(device2)
                     fake_x = torch.cat(
-                        (input_image, synthetic_masked_region.detach()),
-                        dim=1).float()
+                        (input_image.to(device2), y.detach()), dim=1).float()
 
                     error_fake = critic(fake_x).mean()
                     error_real = critic(real_x).mean()
@@ -197,6 +188,9 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     error = error_fake - error_real + penalty
 
                 scaler.scale(error).backward(retain_graph=True)
+                scaler.unscale_(optimizerC)
+                gradsC = gradfilter_ema(
+                    critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
                 scaler.step(optimizerC)
                 scaler.update()
 
@@ -213,34 +207,29 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}')
 
         # Validation loop
-        neural_network.eval()
+        generator.eval()
         for _ in trange(iterations_val):
             with torch.no_grad():
                 x, mask = data_val.load_batch()
                 x, mask = x.float().to(device), mask.float().to(device)
-                whole_mask = (x > 0.).float().to(device)
-
-                known_masked_region = x * mask
                 input_image = (x > 0) * ((mask < 0.5) * x)
-                input_image = torch.cat((input_image, mask), dim=1)
 
                 with autocast():
-                    y = whole_mask * \
-                        neural_network(input_image.detach()).detach().float()
-                    synthetic_masked_region = mask * y
+                    y = generator(input_image, mask).float()
 
-                    error = 10 * \
-                        sum([efunc(known_masked_region,
-                                   synthetic_masked_region, mask)
-                            for efunc in criterion_masked])
-                    error += sum([lambdas[i] * criterion[i](x, y)
-                                 for i in range(len(criterion))])
+                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
+                                     for i in range(len(criterion))])
+                    error_gans = critic(
+                        torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+
+                    error = 10 * error_sup - 0.5 * error_gans
 
                 losses_temp.append(error.item())
-                mse.append(-torch.log10(mse_metric(x, y) + 1e-12).item())
-                mae.append(-torch.log10(mae_metric(x, y) + 1e-12).item())
-                ssim.append(-torch.log10(1 - ssim_metric(x, y) + 1e-12).item())
-                psnr.append(psnr_metric(x, y).item())
+                mse.append(-torch.log10(mse_metric(x.to(device2), y) + 1e-12).item())
+                mae.append(-torch.log10(mae_metric(x.to(device2), y) + 1e-12).item())
+                ssim.append(-torch.log10(1 -
+                            ssim_metric(x.to(device2), y) + 1e-12).item())
+                psnr.append(psnr_metric(x.to(device2), y).item())
 
         mse_val.append(sum(mse) / len(mse))
         mae_val.append(sum(mae) / len(mae))
@@ -259,23 +248,23 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             identity=identity)
 
         if epoch % 10 == 0 and epoch != 0:
-            torch.save(neural_network.state_dict(),
+            torch.save(generator.state_dict(),
                        f"{checkpoint_path}checkpoint_{epoch}_epochs_{identity}.pt")
             torch.save(critic.state_dict(),
                        f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
 
         if mse_val[-1] >= max(mse_val):
-            torch.save(neural_network.state_dict(),
+            torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_mse_{identity}.pt")
             best_mse = epoch
 
         if ssim_val[-1] >= max(ssim_val):
-            torch.save(neural_network.state_dict(),
+            torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_ssim_{identity}.pt")
             best_ssim = epoch
 
         if psnr_val[-1] >= max(psnr_val):
-            torch.save(neural_network.state_dict(),
+            torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_psnr_{identity}.pt")
             best_psnr = epoch
 
@@ -283,7 +272,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         avg_metrics = norm_metrics.sum(axis=0)
 
         if avg_metrics[-1] >= avg_metrics.max():
-            torch.save(neural_network.state_dict(),
+            torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_average_{identity}.pt")
             best_avg = epoch
 
@@ -293,7 +282,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         print(
             f'Best epochs for mse: {best_mse}, ssim: {best_ssim}, psnr: {best_psnr}, norm_average: {best_avg}')
 
-    torch.save(neural_network.state_dict(),
+    torch.save(generator.state_dict(),
                f"{checkpoint_path}checkpoint_{epochs}_epochs_{identity}.pt")
 
     return losses_train, losses_val
