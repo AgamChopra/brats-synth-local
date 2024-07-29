@@ -106,7 +106,7 @@ class Global_UNet(nn.Module):
         encoder_outputs = []
         for layer in self.encoder_layers:
             y, y_skip = layer(y)
-            encoder_outputs.append(y_skip)
+            encoder_outputs.append(y_skip.to(self.device2))
 
         for layer in self.latent_layer:
             #print(y.shape, mask.shape)
