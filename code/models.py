@@ -253,8 +253,7 @@ class CriticA(nn.Module):
         )
 
     def forward(self, x):
-        target_shape = x.shape[2:]
-        y = pad3d(x.float(), target_shape)
+        y = pad3d(x.float(), 240)
         y = self.E(y).squeeze()
         return y
 
