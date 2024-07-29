@@ -42,28 +42,28 @@ class Global_UNet(nn.Module):
         self.device2 = device2
 
         self.downsample = nn.Sequential(
-            nn.Conv3d(in_c, in_c * fact, kernel_size=5, stride=5),
+            nn.Conv3d(in_c, in_c * fact, kernel_size=4, stride=4, padding=8),
             nn.InstanceNorm3d(in_c),
             nn.GELU()
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c * fact, img_size=48, patch_size=8,
+            TransformerBlockDown(in_c * fact, img_size=64, patch_size=8,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c * fact, img_size=24, patch_size=6,
+            TransformerBlockDown(2 * in_c * fact, img_size=32, patch_size=6,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(4 * in_c * fact, img_size=12, patch_size=4,
+            TransformerBlockDown(4 * in_c * fact, img_size=16, patch_size=4,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio)
         ]).to(device=device1)
 
         self.latent_layer = nn.ModuleList([
-            TransformerBlockLatant(8 * in_c * fact, img_size=6, patch_size=2,
+            TransformerBlockLatant(8 * in_c * fact, img_size=8, patch_size=2,
                                    dropout_rate=dropout_rate,
                                    embed_dim=embed_dim, qkv_bias=qkv_bias,
                                    mlp_ratio=mlp_ratio,
@@ -72,22 +72,23 @@ class Global_UNet(nn.Module):
         ]).to(device=device1)
 
         self.decoder_layers = nn.ModuleList([
-            TransformerBlockUp(8 * in_c * fact, img_size=12, patch_size=4,
+            TransformerBlockUp(8 * in_c * fact, img_size=16, patch_size=4,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(4 * in_c * fact, img_size=24, patch_size=6,
+            TransformerBlockUp(4 * in_c * fact, img_size=32, patch_size=6,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(2 * in_c * fact, img_size=48, patch_size=8,
+            TransformerBlockUp(2 * in_c * fact, img_size=64, patch_size=8,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio, final=True)
         ]).to(device=device2)
 
         self.upsample = nn.Sequential(
-            nn.ConvTranspose3d(in_c * fact, in_c, kernel_size=5, stride=5),
+            nn.ConvTranspose3d(in_c * fact, in_c,
+                               kernel_size=4, stride=4, padding=8),
             nn.InstanceNorm3d(in_c),
             nn.GELU(),
             nn.Conv3d(in_c, out_c, kernel_size=1)
