@@ -72,7 +72,7 @@ class GradEdge3D():
         super(GradEdge3D, self).__init__()
         k_sobel = 3
         S = get_sobel_kernel3D(n1, n2, n3)
-        sobel_filters = []
+        self.sobel_filters = []
 
         for s in S:
             sobel_filter = nn.Conv3d(in_channels=1, out_channels=1, stride=1,
@@ -80,8 +80,7 @@ class GradEdge3D():
             sobel_filter.weight.data = torch.from_numpy(
                 s.astype(np.float32)).reshape(1, 1, k_sobel, k_sobel, k_sobel)
             sobel_filter = sobel_filter.to(dtype=torch.float32)
-            sobel_filters.append(sobel_filter)
-        self.sobel_filters = torch.stack(sobel_filters, dim=0)
+            self.sobel_filters.append(sobel_filter)
 
     def detect(self, img, a=1):
         '''
@@ -105,8 +104,8 @@ class GradEdge3D():
 
         img = nn.functional.pad(img, pad, mode='reflect')
 
-        grad_mag = (1 / C) * torch.sum(torch.stack([torch.sum(torch.cat([s(img[:, c:c+1])for c in range(
-            C)], dim=1) + EPSILON, dim=1) ** 2 for s in self.sobel_filters.to(img.device)], dim=1) + EPSILON, dim=1) ** 0.5
+        grad_mag = (1 / C) * torch.sum(torch.stack([torch.sum(torch.cat([s.to(img.device)(img[:, c:c+1])for c in range(
+            C)], dim=1) + EPSILON, dim=1) ** 2 for s in self.sobel_filters], dim=1) + EPSILON, dim=1) ** 0.5
         grad_mag = grad_mag[:, a:-a, a:-a, a:-a]
 
         return grad_mag.view(B, 1, H, W, D)
