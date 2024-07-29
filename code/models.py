@@ -43,7 +43,7 @@ class Global_UNet(nn.Module):
 
         self.downsample = nn.Sequential(
             nn.Conv3d(in_c, in_c * fact, kernel_size=4, stride=4, padding=8),
-            nn.InstanceNorm3d(in_c),
+            nn.InstanceNorm3d(in_c * fact),
             nn.GELU()
         ).to(device=device1)
 
