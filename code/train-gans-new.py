@@ -58,7 +58,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=32,
+        fact=64,
         embed_dim=512,
         n_heads=32,
         mlp_ratio=64,
@@ -256,7 +256,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             path=checkpoint_path if HYAK else None,
                             identity=identity)
 
-        if epoch % 10 == 0 and epoch != 0:
+        if epoch % 1 == 0 and epoch != 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}checkpoint_{epoch}_epochs_{identity}.pt")
             torch.save(critic.state_dict(),
