@@ -32,7 +32,7 @@ class Global_UNet(nn.Module):
                  embed_dim=512, n_heads=8,
                  mlp_ratio=8, qkv_bias=True,
                  dropout_rate=0.3,
-                 mask_downsample=40,
+                 mask_downsample=30,
                  noise=True,
                  device1='cpu', device2='cpu'):
         super(Global_UNet, self).__init__()
@@ -98,6 +98,7 @@ class Global_UNet(nn.Module):
         target_shape = x.shape[2:]
 
         y = pad3d(x.float(), 240)
+        latent_mask = pad3d(mask.float(), 240)
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
@@ -108,7 +109,8 @@ class Global_UNet(nn.Module):
             encoder_outputs.append(y_skip)
 
         for layer in self.latent_layer:
-            y = layer(y, mask)
+            #print(y.shape, mask.shape)
+            y = layer(y, latent_mask)
 
         y = y.to(device=self.device2)
         for layer, encoder_output in zip(self.decoder_layers,
@@ -363,15 +365,15 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     a = torch.ones((B, ic, 240, 240, 240), device=device)
     mask = torch.ones((B, 1, 240, 240, 240), device=device)
 
-    model = Global_UNet(in_c=ic, out_c=oc, fact=32,
-                        embed_dim=512, n_heads=32,
-                        mlp_ratio=64, qkv_bias=True,
+    model = Global_UNet(in_c=ic, out_c=oc, fact=4,
+                        embed_dim=32, n_heads=4,
+                        mlp_ratio=4, qkv_bias=True,
                         dropout_rate=0.,
-                        mask_downsample=40,
+                        mask_downsample=30,
                         noise=True, device1=device, device2=device)
     print(f'Generator size: {int(count_parameters(model)/1000000)}M')
 
-    critic = CriticA(in_c=2, fact=64).to(device)
+    critic = CriticA(in_c=2, fact=2).to(device)
     print(f'Critic size: {int(count_parameters(critic)/1000000)}M')
 
     optimizer = torch.optim.AdamW(

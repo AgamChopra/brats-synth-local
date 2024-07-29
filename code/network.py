@@ -172,8 +172,10 @@ class TransformerBlockLatant(nn.Module):
                                kernel_size=2, stride=2))
 
     def forward(self, x, mask):
-        y = x + self.noise_mask_layer(mask * (
+        encodings = self.noise_mask_layer(mask * (
             torch.rand_like(mask, device=mask.device) if self.noise else 1.))
+        #print(x.shape, encodings.shape)
+        y = x + encodings
         y = self.layers(y)
         return y
 

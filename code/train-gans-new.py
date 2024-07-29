@@ -64,7 +64,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         mlp_ratio=64,
         qkv_bias=True,
         dropout_rate=0.,
-        mask_downsample=40,
+        mask_downsample=30,
         noise=True,
         device1=device1,
         device2=device2
