@@ -51,7 +51,7 @@ class FourierNeuralOperator(nn.Module):
             groups=in_features*2)
 
         self.non_linearity = nn.GELU()
-        self.norm = nn.InstanceNorm3d(out_features)
+        self.norm = nn.InstanceNorm3d(out_features*2)
         self.drop = nn.Dropout(dropout)
 
         self.gate = nn.Sequential(
@@ -75,8 +75,8 @@ class FourierNeuralOperator(nn.Module):
         y = get_filtered_inverse_fft(y, crop_ratio=crop_ratio)
 
         y = torch.cat((y_spatial, y), dim=1)
-        y = self.non_linearity(y)
         y = self.norm(y)
+        y = self.non_linearity(y)
         y = self.drop(y)
         return y
 
