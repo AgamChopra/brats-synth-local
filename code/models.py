@@ -48,11 +48,11 @@ class Global_UNet(nn.Module):
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c * fact, img_size=64, patch_size=8,
+            TransformerBlockDown(in_c * fact, img_size=64, patch_size=16,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c * fact, img_size=32, patch_size=6,
+            TransformerBlockDown(2 * in_c * fact, img_size=32, patch_size=8,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
@@ -76,11 +76,11 @@ class Global_UNet(nn.Module):
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(4 * in_c * fact, img_size=32, patch_size=6,
+            TransformerBlockUp(4 * in_c * fact, img_size=32, patch_size=8,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(2 * in_c * fact, img_size=64, patch_size=8,
+            TransformerBlockUp(2 * in_c * fact, img_size=64, patch_size=16,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio, final=True)

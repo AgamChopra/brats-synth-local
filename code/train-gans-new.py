@@ -77,7 +77,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     critic = models.CriticA(in_c=2, fact=64).to(device2)
     print(
-        f'Crit. size: {models.count_parameters(generator)/1000000}M')
+        f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
         try:
             state_dict = torch.load(critic_path)
