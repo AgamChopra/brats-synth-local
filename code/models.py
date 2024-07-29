@@ -362,22 +362,22 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     a = torch.ones((B, ic, 240, 240, 240), device=device)
     mask = torch.ones((B, 1, 240, 240, 240), device=device)
 
-    model = Global_UNet(in_c=ic, out_c=oc, fact=4,
-                        embed_dim=512, n_heads=16,
-                        mlp_ratio=16, qkv_bias=True,
+    model = Global_UNet(in_c=ic, out_c=oc, fact=32,
+                        embed_dim=512, n_heads=32,
+                        mlp_ratio=64, qkv_bias=True,
                         dropout_rate=0.,
                         mask_downsample=40,
                         noise=True, device1=device, device2=device)
-    print(f'Model size: {int(count_parameters(model)/1000000)}M')
+    print(f'Generator size: {int(count_parameters(model)/1000000)}M')
 
-    critic = CriticA(in_c=oc, fact=64).to(device)
-    print(f'Model size: {int(count_parameters(critic)/1000000)}M')
+    critic = CriticA(in_c=2, fact=64).to(device)
+    print(f'Critic size: {int(count_parameters(critic)/1000000)}M')
 
     optimizer = torch.optim.AdamW(
         list(model.parameters()) + list(critic.parameters()), lr=1e-4)
 
     b = model(a, mask)
-    c = critic(b)
+    c = critic(torch.cat((b, a), dim=1))
 
     print(a.shape, mask.shape)
     print(b.shape)

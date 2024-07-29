@@ -58,9 +58,10 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
+        fact=32,
         embed_dim=512,
-        n_heads=8,
-        mlp_ratio=32,
+        n_heads=32,
+        mlp_ratio=64,
         qkv_bias=True,
         dropout_rate=0.,
         mask_downsample=40,
@@ -74,7 +75,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=8).to(device2)
+    critic = models.CriticA(in_c=2, fact=64).to(device2)
     print(
         f'Crit. size: {models.count_parameters(generator)/1000000}M')
     if critic_path is not None:
