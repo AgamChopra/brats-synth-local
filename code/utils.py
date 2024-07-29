@@ -224,9 +224,9 @@ class GMELoss3D(nn.Module):
         device (str): Device to run the loss computation on.
     """
 
-    def __init__(self, n1=1, n2=2, n3=2, device='cpu'):
+    def __init__(self, n1=1, n2=2, n3=2):
         super(GMELoss3D, self).__init__()
-        self.edge_filter = GradEdge3D(n1, n2, n3, device)
+        self.edge_filter = GradEdge3D(n1, n2, n3)
 
     def forward(self, x, y):
         assert x.shape == y.shape, 'Inputs must be of the same shape'

@@ -68,20 +68,20 @@ class GradEdge3D():
     Sobel edge detection algorithm compatible with PyTorch Autograd engine.
     '''
 
-    def __init__(self, n1=1, n2=2, n3=2, device='cpu'):
+    def __init__(self, n1=1, n2=2, n3=2):
         super(GradEdge3D, self).__init__()
-        self.device = device
         k_sobel = 3
         S = get_sobel_kernel3D(n1, n2, n3)
-        self.sobel_filters = []
+        sobel_filters = []
 
         for s in S:
             sobel_filter = nn.Conv3d(in_channels=1, out_channels=1, stride=1,
                                      kernel_size=k_sobel, padding=k_sobel // 2, bias=False)
             sobel_filter.weight.data = torch.from_numpy(
                 s.astype(np.float32)).reshape(1, 1, k_sobel, k_sobel, k_sobel)
-            sobel_filter = sobel_filter.to(self.device, dtype=torch.float32)
-            self.sobel_filters.append(sobel_filter)
+            sobel_filter = sobel_filter.to(dtype=torch.float32)
+            sobel_filters.append(sobel_filter)
+        self.sobel_filters = torch.stack(sobel_filters, dim=0)
 
     def detect(self, img, a=1):
         '''
@@ -106,7 +106,7 @@ class GradEdge3D():
         img = nn.functional.pad(img, pad, mode='reflect')
 
         grad_mag = (1 / C) * torch.sum(torch.stack([torch.sum(torch.cat([s(img[:, c:c+1])for c in range(
-            C)], dim=1) + EPSILON, dim=1) ** 2 for s in self.sobel_filters], dim=1) + EPSILON, dim=1) ** 0.5
+            C)], dim=1) + EPSILON, dim=1) ** 2 for s in self.sobel_filters.to(img.device)], dim=1) + EPSILON, dim=1) ** 0.5
         grad_mag = grad_mag[:, a:-a, a:-a, a:-a]
 
         return grad_mag.view(B, 1, H, W, D)

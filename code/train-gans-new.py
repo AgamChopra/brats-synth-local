@@ -31,10 +31,10 @@ torch.backends.cudnn.allow_tf32 = True
 
 
 def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
-          device='cpu', model_path=None, critic_path=None, n=1,
+          model_path=None, critic_path=None,
           beta1=0.5, beta2=0.999, Lambda_penalty=10, dropout=0.1,
           HYAK=False, identity='', device1='cpu', device2='cpu',
-          agrok_lpha=0.98, grok_lamb=2.):
+          agrok_lpha=0.98, grok_lamb=2., accumulated_batch=32):
     """
     Training function for the model.
 
@@ -46,14 +46,13 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         device (str, optional): Device to run the training on. Default is 'cpu'.
         model_path (str, optional): Path to the model checkpoint. Default is None.
         critic_path (str, optional): Path to the critic checkpoint. Default is None.
-        n (int, optional): Scaling factor for the number of model filters. Default is 1.
         beta1 (float, optional): Beta1 for Adam optimizer. Default is 0.5.
         beta2 (float, optional): Beta2 for Adam optimizer. Default is 0.999.
         Lambda_penalty (int, optional): Lambda for gradient penalty. Default is 10.
         dropout (float, optional): Dropout rate. Default is 0.1.
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
-    print(device)
+    print(device1, device2)
 
     # Initialize models
     generator = models.Global_UNet(
@@ -94,7 +93,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
     # Initialize loss functions and criteria
     criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
-                 GMELoss3D(device=device),
+                 GMELoss3D(),
                  nn.L1Loss()]
     lambdas = [0.5, 0.25, 0.25]
 
@@ -139,28 +138,27 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         generator.train()
         critic.train()
 
-        for itervar in trange(iterations):
-            x, mask = data.load_batch()
-            if x is None or mask is None:
-                print("Batch returned None values.")
-                continue
-            x, mask = x.float().to(device1), mask.float().to(device1)
-            input_image = (x > 0) * ((mask < 0.5) * x)
-
-            if (itervar + 1) % 5 == 0:
+        for itervar in trange(int(iterations/accumulated_batch)):
+            if (itervar + 1) % 6 == 0:
                 # Generator Optimization
                 optimizer.zero_grad()
-                with autocast():
-                    y = generator(input_image, mask).float()
+                for _ in range(accumulated_batch):
+                    x, mask = data.load_batch()
+                    if x is None or mask is None:
+                        print("Batch returned None values.")
+                        continue
+                    x, mask = x.float().to(device1), mask.float().to(device1)
+                    input_image = (x > 0) * ((mask < 0.5) * x)
+                    with autocast():
+                        y = generator(input_image, mask).float()
 
-                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
-                                     for i in range(len(criterion))])
-                    error_gans = critic(
-                        torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+                        error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
+                                         for i in range(len(criterion))])
+                        error_gans = critic(
+                            torch.cat((input_image.to(device2), y), dim=1).float()).mean()
 
-                    error = 10 * error_sup - 0.5 * error_gans
-
-                scaler.scale(error).backward()
+                        error = 10 * error_sup - 0.5 * error_gans
+                    scaler.scale(error).backward()
                 scaler.unscale_(optimizer)
                 grads = gradfilter_ema(
                     generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
@@ -172,22 +170,29 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             else:
                 # Critic Optimization
                 optimizerC.zero_grad()
-                with autocast():
-                    y = generator(input_image, mask).float()
+                for _ in range(accumulated_batch):
+                    x, mask = data.load_batch()
+                    if x is None or mask is None:
+                        print("Batch returned None values.")
+                        continue
+                    x, mask = x.float().to(device1), mask.float().to(device1)
+                    input_image = (x > 0) * ((mask < 0.5) * x)
+                    with autocast():
+                        y = generator(input_image, mask).float()
 
-                    real_x = torch.cat(
-                        (input_image, x), dim=1).float().to(device2)
-                    fake_x = torch.cat(
-                        (input_image.to(device2), y.detach()), dim=1).float()
+                        real_x = torch.cat(
+                            (input_image, x), dim=1).float().to(device2)
+                        fake_x = torch.cat(
+                            (input_image.to(device2), y.detach()), dim=1).float()
 
-                    error_fake = critic(fake_x).mean()
-                    error_real = critic(real_x).mean()
-                    penalty = grad_penalty(
-                        critic, real_x, fake_x, Lambda_penalty)
+                        error_fake = critic(fake_x).mean()
+                        error_real = critic(real_x).mean()
+                        penalty = grad_penalty(
+                            critic, real_x, fake_x, Lambda_penalty)
 
-                    error = error_fake - error_real + penalty
+                        error = error_fake - error_real + penalty
 
-                scaler.scale(error).backward(retain_graph=True)
+                    scaler.scale(error).backward(retain_graph=True)
                 scaler.unscale_(optimizerC)
                 gradsC = gradfilter_ema(
                     critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
@@ -210,8 +215,11 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         generator.eval()
         for _ in trange(iterations_val):
             with torch.no_grad():
-                x, mask = data_val.load_batch()
-                x, mask = x.float().to(device), mask.float().to(device)
+                x, mask = data.load_batch()
+                if x is None or mask is None:
+                    print("Batch returned None values.")
+                    continue
+                x, mask = x.float().to(device1), mask.float().to(device1)
                 input_image = (x > 0) * ((mask < 0.5) * x)
 
                 with autocast():
@@ -285,10 +293,49 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     torch.save(generator.state_dict(),
                f"{checkpoint_path}checkpoint_{epochs}_epochs_{identity}.pt")
 
-    return losses_train, losses_val
+
+def trn(checkpoint_path,
+        epochs=200,
+        lr=1E-4,
+        batch=1,
+        accumulated_batch=32,
+        params=[None, None],
+        dropout=0.1,
+        HYAK=False,
+        identity='',
+        device1='cpu',
+        device2='cpu'):
+    """
+    Wrapper function to train the model and plot the training and validation losses.
+
+    Args:
+        checkpoint_path (str): Path to save checkpoints.
+        epochs (int, optional): Number of epochs. Default is 500.
+        lr (float, optional): Learning rate. Default is 1E-4.
+        batch (int, optional): Batch size. Default is 1.
+        device (str, optional): Device to run the training on. Default is 'cpu'.
+        n (int, optional): Scaling factor for the number of channels. Default is 1.
+        params (list, optional): List of paths to model and critic checkpoints. Default is None.
+        dropout (float, optional): Dropout rate. Default is 0.1.
+        HYAK (bool, optional): Flag to use HYAK paths. Default is False.
+    """
+    train(
+        checkpoint_path=checkpoint_path,
+        epochs=epochs,
+        lr=lr,
+        batch=batch,
+        accumulated_batch=accumulated_batch,
+        device1=device1,
+        device2=device2,
+        model_path=params[0],
+        critic_path=params[1],
+        dropout=dropout,
+        HYAK=HYAK,
+        identity=identity
+    )
 
 
-def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
+def validate(checkpoint_path, model_path, batch=1, epochs=100,
              dropout=0.1, device='cpu', HYAK=False, gui=True):
     """
     Validation function for the model.
@@ -297,7 +344,6 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
         checkpoint_path (str): Path to save checkpoints.
         model_path (str): Path to the model checkpoint.
         batch (int, optional): Batch size. Default is 1.
-        n (int, optional): Scaling factor for the number of channels. Default is 1.
         epochs (int, optional): Number of epochs. Default is 100.
         dropout (float, optional): Dropout rate. Default is 0.1.
         device (str, optional): Device to run the validation on. Default is 'cpu'.
@@ -305,7 +351,7 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
     """
     with torch.no_grad():
         model = models.Attention_UNet(
-            in_c=2, out_c=1, n=n, dropout_rate=dropout).to(device)
+            in_c=2, out_c=1, dropout_rate=dropout).to(device)
         state_dict = torch.load(
             f"{checkpoint_path}{model_path}", map_location=device)
         print(f"{checkpoint_path}{model_path}", device)
@@ -355,32 +401,6 @@ def validate(checkpoint_path, model_path, batch=1, n=1, epochs=100,
             f'Total Average MSE: {sum(mse) / len(mse):.8f}, MAE: {sum(mae) / len(mae):.8f}, PSNR: {sum(psnr) / len(psnr):.8f}, SSIM: {sum(ssim) / len(ssim):.8f}')
 
 
-def trn(checkpoint_path, epochs=500, lr=1E-4, batch=1, device='cpu', n=1,
-        params=None, dropout=0.1, HYAK=False, identity=''):
-    """
-    Wrapper function to train the model and plot the training and validation losses.
-
-    Args:
-        checkpoint_path (str): Path to save checkpoints.
-        epochs (int, optional): Number of epochs. Default is 500.
-        lr (float, optional): Learning rate. Default is 1E-4.
-        batch (int, optional): Batch size. Default is 1.
-        device (str, optional): Device to run the training on. Default is 'cpu'.
-        n (int, optional): Scaling factor for the number of channels. Default is 1.
-        params (list, optional): List of paths to model and critic checkpoints. Default is None.
-        dropout (float, optional): Dropout rate. Default is 0.1.
-        HYAK (bool, optional): Flag to use HYAK paths. Default is False.
-    """
-    losses_train, losses_val = train(
-        checkpoint_path=checkpoint_path,
-        epochs=epochs, lr=lr, batch=batch,
-        device=device, model_path=params[0],
-        critic_path=params[1], n=n,
-        dropout=dropout, HYAK=HYAK,
-        identity=identity
-    )
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='GANs.')
     parser.add_argument('--gui', type=lambda x: (str(x).lower() == 'true'),
@@ -396,23 +416,26 @@ if __name__ == '__main__':
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
-    model_path = 'checkpoint_50_epochs_gans_vt.pt'
+    model_path = ''
     critic_path = ''
     params = [model_path, critic_path]
     fresh = True
     epochs = 1000
-    lr = 1E-3
+    lr = 1E-4
     batch = 1
-    device = 'cuda'
-    n = 2
+    accumulated_batch = 32
+    device1 = 'cuda:0'
+    device2 = 'cuda:1'
     dropout = 0
 
-    # trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device=device, n=n,
-    #     params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
-    #                                        f"{checkpoint_path}{critic_path}"],
-    #     dropout=dropout, HYAK=HYAK, identity=args.identity)
+    trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device1=device1,
+        device2=device2, dropout=dropout, HYAK=HYAK, identity=args.identity,
+        accumulated_batch=accumulated_batch,
+        params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
+                                           f"{checkpoint_path}{critic_path}"]
+        )
 
     # Uncomment to validate
-    validate(checkpoint_path, model_path=model_path, epochs=2,
-             dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
-             gui=args.gui)
+    # validate(checkpoint_path, model_path=model_path, epochs=2,
+    #          dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
+    #          gui=args.gui)
