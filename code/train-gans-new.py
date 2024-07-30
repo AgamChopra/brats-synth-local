@@ -382,14 +382,13 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 x, mask = x.to(device).float(), mask.to(device).float()
                 whole_mask = (x > 0.).float().to(device)
 
-                with autocast():
-                    input_image = (x > 0) * ((mask < 0.5) * x)
-                    input_image = torch.cat((input_image, mask), dim=1)
-                    y = torch.clip(model(input_image), 0., 1.)
-                    synthetic_masked_region = mask * y * whole_mask
+                input_image = (x > 0) * ((mask < 0.5) * x)
+                input_image = torch.cat((input_image, mask), dim=1)
+                y = torch.clip(model(input_image), 0., 1.)
+                synthetic_masked_region = mask * y * whole_mask
 
-                    score = [scores[i](
-                        x, x * (mask < 0.5) + synthetic_masked_region) for i in range(len(scores))]
+                score = [scores[i](
+                    x, x * (mask < 0.5) + synthetic_masked_region) for i in range(len(scores))]
 
                 mse.append(score[0].item())
                 mae.append(score[1].item())
