@@ -12,36 +12,25 @@ import torch.nn as nn
 from utils import count_parameters, test_model_memory_usage, pad3d
 
 
-def get_fft(x, device='cuda'):
-    with torch.amp.autocast(device_type=device, enabled=False):
-        x = x.float()  # Ensure input is float32 to avoid ComplexHalf issues
-        fft_image = torch.fft.rfftn(x, dim=(-3, -2, -1))
-        fft_shifted = torch.fft.fftshift(fft_image, dim=(-3, -2, -1))
-        real = fft_shifted.real
-        imag = fft_shifted.imag
+def get_fft(x):
+    fft_image = torch.fft.rfftn(x)
+    fft_shifted = torch.fft.fftshift(fft_image)
+    real = fft_shifted.real
+    imag = fft_shifted.imag
     return torch.cat((real, imag), dim=1)
 
 
-def get_filtered_inverse_fft(freq, crop_ratio=0.1, device='cuda'):
-    with torch.amp.autocast(device_type=device, enabled=False):
-        shape = freq.shape[2]
-        cropped = int(shape * crop_ratio)
-
-        real_imag = pad3d(pad3d(freq, (cropped, cropped, int(
-            cropped/2) + 1)), (shape, shape, int(shape/2) + 1))
-
-        real, imag = real_imag[:, :int(
-            freq.shape[1]/2)], real_imag[:, int(freq.shape[1]/2):]
-
-        real = real.float()
-        imag = imag.float()
-
-        fft_reconstructed = torch.complex(real, imag)
-
-        ifft_shifted = torch.fft.ifftshift(fft_reconstructed, dim=(-3, -2, -1))
-        reconstructed_image = torch.fft.irfftn(
-            ifft_shifted, s=(shape, shape, shape)).real
-
+def get_filtered_inverse_fft(freq, crop_ratio=0.1):
+    shape = freq.shape[2]
+    cropped = int(shape * crop_ratio)
+    real_imag = pad3d(pad3d(freq, (cropped, cropped, int(
+        cropped/2) + 1)), (shape, shape, int(shape/2) + 1))
+    real, imag = real_imag[:, :int(
+        freq.shape[1]/2)], real_imag[:, int(freq.shape[1]/2):]
+    fft_reconstructed = torch.complex(real, imag)
+    ifft_shifted = torch.fft.ifftshift(fft_reconstructed)
+    reconstructed_image = torch.fft.irfftn(
+        ifft_shifted, s=(shape, shape, shape)).real
     return reconstructed_image
 
 
@@ -69,21 +58,28 @@ class FourierNeuralOperator(nn.Module):
 
     def forward(self, x, crop_ratio=1.):
         y_spatial = self.spatial_layer(x)
+        print('         spatial_layer', y_spatial.mean().item())
         y = get_fft(x)
 
         auto_filter = self.gate(y)
+        print('         auto_filter', auto_filter.mean().item())
 
         y = self.frequency_layer(y)
+        print('         freq_layer', y.mean().item())
 
         y = torch.cat((y[:, :int(y.shape[1]/2)] * auto_filter,
                       y[:, int(y.shape[1]/2):] * auto_filter), dim=1)
+        print('         freq_layer_filtered', y.mean().item())
 
         y = get_filtered_inverse_fft(y, crop_ratio=crop_ratio)
+        print('         freq_back', y.mean().item())
 
         y = torch.cat((y_spatial, y), dim=1)
         y = self.norm(y)
+        print('         y_norm', y.mean().item())
         y = self.non_linearity(y)
         y = self.drop(y)
+        print('         y_out', y.mean().item())
         return y
 
 

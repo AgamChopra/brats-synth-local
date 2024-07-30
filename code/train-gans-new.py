@@ -18,7 +18,7 @@ from tqdm import trange
 import dataloader
 import models
 from grokfast import gradfilter_ema
-from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
+from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm, show_images
 from utils import SSIMLoss, GMELoss3D, grad_penalty
 
 # Set PyTorch printing precision
@@ -58,10 +58,10 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=32,
-        embed_dim=512,
-        n_heads=32,
-        mlp_ratio=64,
+        fact=4,
+        embed_dim=256,
+        n_heads=8,
+        mlp_ratio=16,
         qkv_bias=True,
         dropout_rate=0.,
         mask_downsample=30,
@@ -75,7 +75,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=64).to(device2)
+    critic = models.CriticA(in_c=2, fact=4).to(device2)
     print(
         f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
@@ -152,11 +152,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     input_image = (x > 0) * ((mask < 0.5) * x)
                     with autocast():
                         y = generator(input_image, mask).float()
+                        show_images(
+                            torch.cat([x.cpu().detach(),
+                                       input_image.cpu().detach(),
+                                       y.cpu().detach(),
+                                       torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
+                        print(y.mean().item())
 
                         error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
                                          for i in range(len(criterion))])
+                        print(error_sup.item())
                         error_gans = critic(
                             torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+                        print(error_gans.item())
 
                         error = 10 * error_sup - 0.5 * error_gans
                     scaler.scale(error).backward()
@@ -180,6 +188,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     input_image = (x > 0) * ((mask < 0.5) * x)
                     with autocast():
                         y = generator(input_image, mask).float()
+                        show_images(
+                            torch.cat([x.cpu().detach(),
+                                       input_image.cpu().detach(),
+                                       y.cpu().detach(),
+                                       torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
+                        print(y.mean().item())
 
                         real_x = torch.cat(
                             (input_image, x), dim=1).float().to(device2)
@@ -190,6 +204,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                         error_real = critic(real_x).mean()
                         penalty = grad_penalty(
                             critic, real_x, fake_x, Lambda_penalty)
+                        print(error_fake.item(),
+                              error_real.item(), penalty.item())
 
                         error = error_fake - error_real + penalty
 
@@ -244,7 +260,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         mae_val.append(torch.nan_to_num(sum(mae) / len(mae)))
         ssim_val.append(torch.nan_to_num(sum(ssim) / len(ssim)))
         psnr_val.append(torch.nan_to_num(sum(psnr) / len(psnr)))
-        losses_val.append(torch.nan_to_num(sum(losses_temp) / len(losses_temp)))
+        losses_val.append(torch.nan_to_num(
+            sum(losses_temp) / len(losses_temp)))
         losses_temp = []
         mse, mae, psnr, ssim = [], [], [], []
 
@@ -424,9 +441,9 @@ if __name__ == '__main__':
     epochs = 1000
     lr = 1E-4
     batch = 1
-    accumulated_batch = 32
+    accumulated_batch = 8
     device1 = 'cuda:0'
-    device2 = 'cuda:1'
+    device2 = 'cuda:0'
     dropout = 0
 
     trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device1=device1,

@@ -102,15 +102,19 @@ class Global_UNet(nn.Module):
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
+        print('\n...model...')
+        print('downsample', y.mean().item())
 
         encoder_outputs = []
         for layer in self.encoder_layers:
             y, y_skip = layer(y)
             encoder_outputs.append(y_skip.to(self.device2))
+            print('encoder', y.mean().item(), y_skip.mean().item())
 
         for layer in self.latent_layer:
             #print(y.shape, mask.shape)
             y = layer(y, latent_mask)
+            print('latent', y.mean().item())
 
         y = y.to(device=self.device2)
         for layer, encoder_output in zip(self.decoder_layers,
@@ -118,9 +122,13 @@ class Global_UNet(nn.Module):
             # print(y.shape, encoder_output.shape)
             y = layer(
                 torch.cat((pad3d(y, encoder_output), encoder_output), dim=1))
+            print('decoder', y.mean().item())
 
         y = self.upsample(y)
+        print('upsample', y.mean().item())
         y = pad3d(y, target_shape)
+        y = nn.functional.sigmoid(y)
+        print('........\n')
         return y
 
 

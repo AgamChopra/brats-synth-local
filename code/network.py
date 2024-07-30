@@ -68,9 +68,13 @@ class FourierGateAttentionBlock(nn.Module):
 
     def forward(self, x):
         y1 = self.frequency_block(x)
+        print('      FreqBlock', y1.mean().item())
         y2 = self.vision_block(x)
+        print('      VisBlock', y2.mean().item())
         y = self.merge_block(torch.cat((y1, y2), dim=1))
+        print('      MergeBlock', y.mean().item())
         y = x + y
+        print('      sum', y.mean().item())
         return y
 
 
@@ -82,17 +86,20 @@ class TransformerBlock(nn.Module):
                  dropout_rate=0.3):
         super(TransformerBlock, self).__init__()
 
-        self.layers = nn.Sequential(
+        self.layers = nn.ModuleList([
             FourierGateAttentionBlock(in_c,
                                       img_size, patch_size,
                                       embed_dim, n_heads,
                                       mlp_ratio, qkv_bias,
                                       dropout_rate),
             DepthwiseFeedForwardBlock(in_c, dropout_rate)
-        )
+        ])
 
     def forward(self, x):
-        y = self.layers(x)
+        y = self.layers[0](x)
+        print('   FGABlock', y.mean().item())
+        y = self.layers[1](x)
+        print('   FeedForwardBlock', y.mean().item())
         return y
 
 
