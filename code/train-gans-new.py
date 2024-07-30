@@ -262,17 +262,17 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             torch.save(critic.state_dict(),
                        f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
 
-        if mse_val[-1] >= max(mse_val):
+        if mse_val[-1] >= max(mse_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_mse_{identity}.pt")
             best_mse = epoch
 
-        if ssim_val[-1] >= max(ssim_val):
+        if ssim_val[-1] >= max(ssim_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_ssim_{identity}.pt")
             best_ssim = epoch
 
-        if psnr_val[-1] >= max(psnr_val):
+        if psnr_val[-1] >= max(psnr_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_psnr_{identity}.pt")
             best_psnr = epoch
@@ -280,7 +280,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
         avg_metrics = norm_metrics.sum(axis=0)
 
-        if avg_metrics[-1] >= avg_metrics.max():
+        if avg_metrics[-1] >= avg_metrics.max() or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_average_{identity}.pt")
             best_avg = epoch
