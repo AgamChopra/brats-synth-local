@@ -12,29 +12,35 @@ import torch.nn as nn
 from utils import count_parameters, test_model_memory_usage, pad3d
 
 
-def get_fft(x):
-    fft_image = torch.fft.rfftn(x)
-    fft_shifted = torch.fft.fftshift(fft_image)
-    real = fft_shifted.real
-    imag = fft_shifted.imag
+def get_fft(x, device='cuda'):
+    with torch.amp.autocast(device_type=device, enabled=False):
+        x = x.float()  # Ensure input is float32 to avoid ComplexHalf issues
+        fft_image = torch.fft.rfftn(x, dim=(-3, -2, -1))
+        fft_shifted = torch.fft.fftshift(fft_image, dim=(-3, -2, -1))
+        real = fft_shifted.real
+        imag = fft_shifted.imag
     return torch.cat((real, imag), dim=1)
 
 
-def get_filtered_inverse_fft(freq, crop_ratio=0.1):
-    shape = freq.shape[2]
-    cropped = int(shape * crop_ratio)
+def get_filtered_inverse_fft(freq, crop_ratio=0.1, device='cuda'):
+    with torch.amp.autocast(device_type=device, enabled=False):
+        shape = freq.shape[2]
+        cropped = int(shape * crop_ratio)
 
-    real_imag = pad3d(pad3d(freq, (cropped, cropped, int(
-        cropped/2) + 1)), (shape, shape, int(shape/2) + 1))
+        real_imag = pad3d(pad3d(freq, (cropped, cropped, int(
+            cropped/2) + 1)), (shape, shape, int(shape/2) + 1))
 
-    real, imag = real_imag[:, :int(
-        freq.shape[1]/2)], real_imag[:, int(freq.shape[1]/2):]
+        real, imag = real_imag[:, :int(
+            freq.shape[1]/2)], real_imag[:, int(freq.shape[1]/2):]
 
-    fft_reconstructed = torch.complex(real, imag)
+        real = real.float()
+        imag = imag.float()
 
-    ifft_shifted = torch.fft.ifftshift(fft_reconstructed)
-    reconstructed_image = torch.fft.irfftn(
-        ifft_shifted, s=(shape, shape, shape)).real
+        fft_reconstructed = torch.complex(real, imag)
+
+        ifft_shifted = torch.fft.ifftshift(fft_reconstructed, dim=(-3, -2, -1))
+        reconstructed_image = torch.fft.irfftn(
+            ifft_shifted, s=(shape, shape, shape)).real
 
     return reconstructed_image
 

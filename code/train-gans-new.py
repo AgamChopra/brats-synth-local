@@ -58,7 +58,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=64,
+        fact=32,
         embed_dim=512,
         n_heads=32,
         mlp_ratio=64,
@@ -240,11 +240,11 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             ssim_metric(x.to(device2), y) + 1e-12).item())
                 psnr.append(psnr_metric(x.to(device2), y).item())
 
-        mse_val.append(sum(mse) / len(mse))
-        mae_val.append(sum(mae) / len(mae))
-        ssim_val.append(sum(ssim) / len(ssim))
-        psnr_val.append(sum(psnr) / len(psnr))
-        losses_val.append(sum(losses_temp) / len(losses_temp))
+        mse_val.append(torch.nan_to_num(sum(mse) / len(mse)))
+        mae_val.append(torch.nan_to_num(sum(mae) / len(mae)))
+        ssim_val.append(torch.nan_to_num(sum(ssim) / len(ssim)))
+        psnr_val.append(torch.nan_to_num(sum(psnr) / len(psnr)))
+        losses_val.append(torch.nan_to_num(sum(losses_temp) / len(losses_temp)))
         losses_temp = []
         mse, mae, psnr, ssim = [], [], [], []
 
@@ -262,17 +262,17 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             torch.save(critic.state_dict(),
                        f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
 
-        if mse_val[-1] >= max(mse_val) or epoch == 0:
+        if mse_val[-1] >= torch.nan_to_num(max(mse_val)) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_mse_{identity}.pt")
             best_mse = epoch
 
-        if ssim_val[-1] >= max(ssim_val) or epoch == 0:
+        if ssim_val[-1] >= torch.nan_to_num(max(ssim_val)) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_ssim_{identity}.pt")
             best_ssim = epoch
 
-        if psnr_val[-1] >= max(psnr_val) or epoch == 0:
+        if psnr_val[-1] >= torch.nan_to_num(max(psnr_val)) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_psnr_{identity}.pt")
             best_psnr = epoch
@@ -280,7 +280,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
         avg_metrics = norm_metrics.sum(axis=0)
 
-        if avg_metrics[-1] >= avg_metrics.max() or epoch == 0:
+        if avg_metrics[-1] >= torch.nan_to_num(avg_metrics.max()) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_average_{identity}.pt")
             best_avg = epoch
