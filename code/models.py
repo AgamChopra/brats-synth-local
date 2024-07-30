@@ -210,22 +210,23 @@ class Attention_UNet(nn.Module):
 
 
 class CriticA(nn.Module):
-    def __init__(self, in_c):
+    def __init__(self, in_c, fact=1):
         super(CriticA, self).__init__()
         self.conv1 = nn.utils.spectral_norm(nn.Conv3d(
-            in_channels=in_c, out_channels=16, kernel_size=3, stride=2, padding=1))
+            in_channels=in_c, out_channels=16*fact, kernel_size=3, stride=2, padding=1))
         self.conv2 = nn.utils.spectral_norm(nn.Conv3d(
-            in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1))
+            in_channels=16*fact, out_channels=32*fact, kernel_size=3, stride=2, padding=1))
         self.conv3 = nn.utils.spectral_norm(nn.Conv3d(
-            in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1))
+            in_channels=32*fact, out_channels=64*fact, kernel_size=3, stride=2, padding=1))
         self.conv4 = nn.utils.spectral_norm(nn.Conv3d(
-            in_channels=64, out_channels=128, kernel_size=3, stride=2, padding=1))
+            in_channels=64*fact, out_channels=128*fact, kernel_size=3, stride=2, padding=1))
         self.conv5 = nn.utils.spectral_norm(nn.Conv3d(
-            in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1))
+            in_channels=128*fact, out_channels=256*fact, kernel_size=3, stride=2, padding=1))
 
         self.flatten = nn.Flatten()
-        self.fc1 = nn.utils.spectral_norm(nn.Linear(256 * 8 * 8 * 8, 512))
-        self.fc2 = nn.utils.spectral_norm(nn.Linear(512, 1))
+        self.fc1 = nn.utils.spectral_norm(
+            nn.Linear(256 * 8 * 8 * 8 * fact, 512 * fact))
+        self.fc2 = nn.utils.spectral_norm(nn.Linear(512*fact, 1))
 
     def forward(self, x_in):
         x = pad3d(x_in, target=240)

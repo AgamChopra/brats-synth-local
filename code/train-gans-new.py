@@ -11,14 +11,14 @@ Created on June 2023
 import argparse
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler, autocast
+# from torch.cuda.amp import GradScaler, autocast
 from numpy import array
 from tqdm import trange
 
 import dataloader
 import models
 from grokfast import gradfilter_ema
-from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm, show_images
+from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
 from utils import SSIMLoss, GMELoss3D, grad_penalty
 
 # Set PyTorch printing precision
@@ -75,7 +75,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2).to(device2)
+    critic = models.CriticA(in_c=2, fact=1).to(device2)
     print(
         f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
@@ -131,15 +131,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     mse, mae, psnr, ssim = [], [], [], []
     mse_val, mae_val, psnr_val, ssim_val = [], [], [], []
 
+    num_batches = int(iterations/accumulated_batch)
+
     # Training loop
     for epoch in range(epochs):
         print(f'Epoch {epoch}:')
         generator.train()
         critic.train()
 
-        for itervar in trange(int(iterations/accumulated_batch)):
-            if (itervar + 1) % 6 == 0:
-                print('\nGenerator Optimization')
+        for itervar in range(num_batches):
+            error_accum = []
+            print(f'Batch {itervar + 1}/{num_batches + 1}:')
+            if (itervar + 1) % 3 == 0:
+                print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
                     x, mask = data.load_batch()
@@ -150,30 +154,27 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     input_image = (x > 0) * ((mask < 0.5) * x)
 
                     y = generator(input_image, mask).float()
-                    show_images(
-                        torch.cat([x.cpu().detach(),
-                                   input_image.cpu().detach(),
-                                   y.cpu().detach(),
-                                   torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
-                    print(y.mean().item())
+                    # print(y.mean().item())
 
                     error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
                                      for i in range(len(criterion))])
-                    print(error_sup.item())
+                    # print(error_sup.item())
                     error_gans = critic(
                         torch.cat((input_image.to(device2), y), dim=1).float()).mean()
-                    print(error_gans.item())
+                    # print(error_gans.item())
 
                     error = 10 * error_sup - 0.5 * error_gans
                     error.backward()
+                    error_accum.append(error_gans.item())
 
-                grads = gradfilter_ema(generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
+                grads = gradfilter_ema(
+                    generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
                 optimizer.step()
 
-                losses.append(error_gans.item())
+                losses.append(sum(error_accum)/len(error_accum))
 
             else:
-                print('\nCritic Optimization')
+                print('Critic Optimization')
                 optimizerC.zero_grad()
                 for _ in trange(accumulated_batch):
                     x, mask = data.load_batch()
@@ -184,12 +185,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     input_image = (x > 0) * ((mask < 0.5) * x)
 
                     y = generator(input_image, mask).float()
-                    show_images(
-                        torch.cat([x.cpu().detach(),
-                                   input_image.cpu().detach(),
-                                   y.cpu().detach(),
-                                   torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
-                    print(y.mean().item())
+                    # print(y.mean().item())
 
                     real_x = torch.cat(
                         (input_image, x), dim=1).float().to(device2)
@@ -198,18 +194,21 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
                     error_fake = critic(fake_x).mean()
                     error_real = critic(real_x).mean()
-                    penalty = grad_penalty(critic, real_x, fake_x, Lambda_penalty)
-                    print(error_fake.item(),
-                          error_real.item(),
-                          penalty.item())
+                    penalty = grad_penalty(
+                        critic, real_x, fake_x, Lambda_penalty)
+                    # print(error_fake.item(),
+                    #       error_real.item(),
+                    #       penalty.item())
 
                     error = error_fake - error_real + penalty
                     error.backward(retain_graph=True)
+                    error_accum.append(error.item())
 
-                gradsC = gradfilter_ema(critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
+                gradsC = gradfilter_ema(
+                    critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
                 optimizerC.step()
 
-                critic_losses.append(error.item())
+                critic_losses.append(sum(error_accum)/len(error_accum))
 
         losses_train.append(sum(losses) / len(losses))
         losses = []
