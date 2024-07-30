@@ -58,10 +58,10 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=4,
+        fact=8,
         embed_dim=256,
         n_heads=8,
-        mlp_ratio=16,
+        mlp_ratio=8,
         qkv_bias=True,
         dropout_rate=0.,
         mask_downsample=30,
@@ -75,7 +75,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=4).to(device2)
+    critic = models.CriticA(in_c=2).to(device2)
     print(
         f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
@@ -131,8 +131,6 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     mse, mae, psnr, ssim = [], [], [], []
     mse_val, mae_val, psnr_val, ssim_val = [], [], [], []
 
-    scaler = GradScaler()
-
     # Training loop
     for epoch in range(epochs):
         print(f'Epoch {epoch}:')
@@ -141,80 +139,75 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         for itervar in trange(int(iterations/accumulated_batch)):
             if (itervar + 1) % 6 == 0:
-                # Generator Optimization
+                print('\nGenerator Optimization')
                 optimizer.zero_grad()
-                for _ in range(accumulated_batch):
+                for _ in trange(accumulated_batch):
                     x, mask = data.load_batch()
                     if x is None or mask is None:
                         print("Batch returned None values.")
                         continue
                     x, mask = x.float().to(device1), mask.float().to(device1)
                     input_image = (x > 0) * ((mask < 0.5) * x)
-                    with autocast():
-                        y = generator(input_image, mask).float()
-                        show_images(
-                            torch.cat([x.cpu().detach(),
-                                       input_image.cpu().detach(),
-                                       y.cpu().detach(),
-                                       torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
-                        print(y.mean().item())
 
-                        error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
-                                         for i in range(len(criterion))])
-                        print(error_sup.item())
-                        error_gans = critic(
-                            torch.cat((input_image.to(device2), y), dim=1).float()).mean()
-                        print(error_gans.item())
+                    y = generator(input_image, mask).float()
+                    show_images(
+                        torch.cat([x.cpu().detach(),
+                                   input_image.cpu().detach(),
+                                   y.cpu().detach(),
+                                   torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
+                    print(y.mean().item())
 
-                        error = 10 * error_sup - 0.5 * error_gans
-                    scaler.scale(error).backward()
-                scaler.unscale_(optimizer)
-                grads = gradfilter_ema(
-                    generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
-                scaler.step(optimizer)
-                scaler.update()
+                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
+                                     for i in range(len(criterion))])
+                    print(error_sup.item())
+                    error_gans = critic(
+                        torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+                    print(error_gans.item())
+
+                    error = 10 * error_sup - 0.5 * error_gans
+                    error.backward()
+
+                grads = gradfilter_ema(generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
+                optimizer.step()
 
                 losses.append(error_gans.item())
 
             else:
-                # Critic Optimization
+                print('\nCritic Optimization')
                 optimizerC.zero_grad()
-                for _ in range(accumulated_batch):
+                for _ in trange(accumulated_batch):
                     x, mask = data.load_batch()
                     if x is None or mask is None:
                         print("Batch returned None values.")
                         continue
                     x, mask = x.float().to(device1), mask.float().to(device1)
                     input_image = (x > 0) * ((mask < 0.5) * x)
-                    with autocast():
-                        y = generator(input_image, mask).float()
-                        show_images(
-                            torch.cat([x.cpu().detach(),
-                                       input_image.cpu().detach(),
-                                       y.cpu().detach(),
-                                       torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
-                        print(y.mean().item())
 
-                        real_x = torch.cat(
-                            (input_image, x), dim=1).float().to(device2)
-                        fake_x = torch.cat(
-                            (input_image.to(device2), y.detach()), dim=1).float()
+                    y = generator(input_image, mask).float()
+                    show_images(
+                        torch.cat([x.cpu().detach(),
+                                   input_image.cpu().detach(),
+                                   y.cpu().detach(),
+                                   torch.abs(x-y).cpu().detach()], dim=0), 4, 2)
+                    print(y.mean().item())
 
-                        error_fake = critic(fake_x).mean()
-                        error_real = critic(real_x).mean()
-                        penalty = grad_penalty(
-                            critic, real_x, fake_x, Lambda_penalty)
-                        print(error_fake.item(),
-                              error_real.item(), penalty.item())
+                    real_x = torch.cat(
+                        (input_image, x), dim=1).float().to(device2)
+                    fake_x = torch.cat(
+                        (input_image.to(device2), y.detach()), dim=1).float()
 
-                        error = error_fake - error_real + penalty
+                    error_fake = critic(fake_x).mean()
+                    error_real = critic(real_x).mean()
+                    penalty = grad_penalty(critic, real_x, fake_x, Lambda_penalty)
+                    print(error_fake.item(),
+                          error_real.item(),
+                          penalty.item())
 
-                    scaler.scale(error).backward(retain_graph=True)
-                scaler.unscale_(optimizerC)
-                gradsC = gradfilter_ema(
-                    critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
-                scaler.step(optimizerC)
-                scaler.update()
+                    error = error_fake - error_real + penalty
+                    error.backward(retain_graph=True)
+
+                gradsC = gradfilter_ema(critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
+                optimizerC.step()
 
                 critic_losses.append(error.item())
 
@@ -239,15 +232,14 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 x, mask = x.float().to(device1), mask.float().to(device1)
                 input_image = (x > 0) * ((mask < 0.5) * x)
 
-                with autocast():
-                    y = generator(input_image, mask).float()
+                y = generator(input_image, mask).float()
 
-                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
-                                     for i in range(len(criterion))])
-                    error_gans = critic(
-                        torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+                error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
+                                 for i in range(len(criterion))])
+                error_gans = critic(
+                    torch.cat((input_image.to(device2), y), dim=1).float()).mean()
 
-                    error = 10 * error_sup - 0.5 * error_gans
+                error = 10 * error_sup - 0.5 * error_gans
 
                 losses_temp.append(error.item())
                 mse.append(-torch.log10(mse_metric(x.to(device2), y) + 1e-12).item())
@@ -441,7 +433,7 @@ if __name__ == '__main__':
     epochs = 1000
     lr = 1E-4
     batch = 1
-    accumulated_batch = 8
+    accumulated_batch = 32
     device1 = 'cuda:0'
     device2 = 'cuda:0'
     dropout = 0

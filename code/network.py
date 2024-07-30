@@ -60,21 +60,21 @@ class FourierGateAttentionBlock(nn.Module):
             dropout=dropout_rate
         )
 
-        self.frequency_block = FNOBlock(
-            in_c, int(embed_dim/2) * in_c, out_c, dropout_rate)
+        # self.frequency_block = FNOBlock(
+        #     in_c, int(embed_dim/2) * in_c, out_c, dropout_rate)
 
-        self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c, kernel_size=1),
-                                         nn.Dropout3d(dropout_rate))
+        # self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c, kernel_size=1),
+        #                                  nn.Dropout3d(dropout_rate))
 
     def forward(self, x):
-        y1 = self.frequency_block(x)
-        print('      FreqBlock', y1.mean().item())
-        y2 = self.vision_block(x)
-        print('      VisBlock', y2.mean().item())
-        y = self.merge_block(torch.cat((y1, y2), dim=1))
-        print('      MergeBlock', y.mean().item())
+        # y1 = self.frequency_block(x)
+        # # print('      FreqBlock', y1.mean().item())
+        y = self.vision_block(x)
+        # print('      VisBlock', y.mean().item())
+        # y = self.merge_block(torch.cat((y1, y2), dim=1))
+        # # print('      MergeBlock', y.mean().item())
         y = x + y
-        print('      sum', y.mean().item())
+        # print('      sum', y.mean().item())
         return y
 
 
@@ -97,9 +97,9 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x):
         y = self.layers[0](x)
-        print('   FGABlock', y.mean().item())
+        # print('   FGABlock', y.mean().item())
         y = self.layers[1](x)
-        print('   FeedForwardBlock', y.mean().item())
+        # print('   FeedForwardBlock', y.mean().item())
         return y
 
 
@@ -181,7 +181,7 @@ class TransformerBlockLatant(nn.Module):
     def forward(self, x, mask):
         encodings = self.noise_mask_layer(mask * (
             torch.rand_like(mask, device=mask.device) if self.noise else 1.))
-        #print(x.shape, encodings.shape)
+        ## print(x.shape, encodings.shape)
         y = x + encodings
         y = self.layers(y)
         return y

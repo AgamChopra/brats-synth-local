@@ -102,33 +102,33 @@ class Global_UNet(nn.Module):
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
-        print('\n...model...')
-        print('downsample', y.mean().item())
+        # print('\n...model...')
+        # print('downsample', y.mean().item())
 
         encoder_outputs = []
         for layer in self.encoder_layers:
             y, y_skip = layer(y)
             encoder_outputs.append(y_skip.to(self.device2))
-            print('encoder', y.mean().item(), y_skip.mean().item())
+            # print('encoder', y.mean().item(), y_skip.mean().item())
 
         for layer in self.latent_layer:
-            #print(y.shape, mask.shape)
+            ## print(y.shape, mask.shape)
             y = layer(y, latent_mask)
-            print('latent', y.mean().item())
+            # print('latent', y.mean().item())
 
         y = y.to(device=self.device2)
         for layer, encoder_output in zip(self.decoder_layers,
                                          encoder_outputs[::-1]):
-            # print(y.shape, encoder_output.shape)
+            # # print(y.shape, encoder_output.shape)
             y = layer(
                 torch.cat((pad3d(y, encoder_output), encoder_output), dim=1))
-            print('decoder', y.mean().item())
+            # print('decoder', y.mean().item())
 
         y = self.upsample(y)
-        print('upsample', y.mean().item())
+        # print('upsample', y.mean().item())
         y = pad3d(y, target_shape)
         y = nn.functional.sigmoid(y)
-        print('........\n')
+        # print('........\n')
         return y
 
 
@@ -209,61 +209,37 @@ class Attention_UNet(nn.Module):
         return y
 
 
-class DepthwiseSeparableConv3d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride):
-        super(DepthwiseSeparableConv3d, self).__init__()
-        self.depthwise = nn.utils.spectral_norm(
-            nn.Conv3d(in_channels, in_channels, kernel_size=kernel_size,
-                      stride=stride, groups=in_channels))
-        self.pointwise = nn.utils.spectral_norm(
-            nn.Conv3d(in_channels, out_channels, kernel_size=1))
-
-    def forward(self, x):
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        return x
-
-
 class CriticA(nn.Module):
-    """
-    Critic model for adversarial training.
-
-    Args:
-        in_c (int, optional): Number of input channels. Default is 1.
-        fact (int, optional): Scaling factor for the number of channels. Default is 1.
-    """
-
-    def __init__(self, in_c=1, fact=8):
+    def __init__(self, in_c):
         super(CriticA, self).__init__()
-        self.c = fact
+        self.conv1 = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=in_c, out_channels=16, kernel_size=3, stride=2, padding=1))
+        self.conv2 = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1))
+        self.conv3 = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1))
+        self.conv4 = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=64, out_channels=128, kernel_size=3, stride=2, padding=1))
+        self.conv5 = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1))
 
-        self.E = nn.Sequential(
-            nn.utils.spectral_norm(
-                nn.Conv3d(in_c, self.c * 2, kernel_size=3, stride=3)),
-            nn.GELU(),
-            DepthwiseSeparableConv3d(
-                self.c * 2, self.c * 4, kernel_size=2, stride=2),
-            nn.GELU(),
-            DepthwiseSeparableConv3d(
-                self.c * 4, self.c * 8, kernel_size=3, stride=3),
-            nn.GELU(),
-            DepthwiseSeparableConv3d(
-                self.c * 8, self.c * 16, kernel_size=2, stride=2),
-            nn.GELU(),
-            DepthwiseSeparableConv3d(
-                self.c * 16, self.c * 32, kernel_size=3, stride=3),
-            nn.GELU(),
-            DepthwiseSeparableConv3d(
-                self.c * 32, self.c * 64, kernel_size=2, stride=2),
-            nn.GELU(),
-            nn.utils.spectral_norm(
-                nn.Conv3d(self.c * 64, 1, kernel_size=1, stride=1))
-        )
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.utils.spectral_norm(nn.Linear(256 * 8 * 8 * 8, 512))
+        self.fc2 = nn.utils.spectral_norm(nn.Linear(512, 1))
 
-    def forward(self, x):
-        y = pad3d(x.float(), 240)
-        y = self.E(y).squeeze()
-        return y
+    def forward(self, x_in):
+        x = pad3d(x_in, target=240)
+        x = nn.LeakyReLU(0.2)(self.conv1(x))
+        x = nn.LeakyReLU(0.2)(self.conv2(x))
+        x = nn.LeakyReLU(0.2)(self.conv3(x))
+        x = nn.LeakyReLU(0.2)(self.conv4(x))
+        x = nn.LeakyReLU(0.2)(self.conv5(x))
+
+        x = self.flatten(x)
+        x = nn.LeakyReLU(0.2)(self.fc1(x))
+        x = self.fc2(x)
+
+        return x.squeeze()
 
 
 class Critic(nn.Module):

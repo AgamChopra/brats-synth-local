@@ -9,7 +9,7 @@ Created on July 2024
 import torch
 import torch.nn as nn
 
-from utils import count_parameters, test_model_memory_usage, pad3d
+from utils import count_parameters, test_model_memory_usage, pad3d, show_images
 
 
 def get_fft(x):
@@ -86,6 +86,9 @@ class FourierNeuralOperator(nn.Module):
         )
 
     def forward(self, x, crop_ratio=1.):
+        max_value = torch.finfo(torch.float16).max / 1.1
+        min_value = -max_value
+
         y_spatial = self.spatial_layer(x)
         print('         spatial_layer', y_spatial.mean().item())
         y, rm, im = get_fft(x)
@@ -93,16 +96,25 @@ class FourierNeuralOperator(nn.Module):
               rm[0].item(), rm[1].item(), im[0].item(), im[1].item())
 
         auto_filter = self.gate(y)
+        auto_filter = torch.clamp(auto_filter, min=0, max=1)
+        auto_filter = torch.nan_to_num(
+            auto_filter, nan=0., posinf=1., neginf=0.)
         print('         auto_filter', auto_filter.mean().item())
 
         y = self.frequency_layer(y)
+        y = torch.clamp(y, min=min_value, max=max_value)
+        y = torch.nan_to_num(y, nan=0., posinf=max_value, neginf=min_value)
         print('         freq_layer', y.mean().item())
 
         y = torch.cat((((y[:, :int(y.shape[1]/2)]*(rm[1]-rm[0]))+rm[0]) * auto_filter,
                       ((y[:, int(y.shape[1]/2):]*(im[1]-im[0]))+im[0]) * auto_filter), dim=1)
+        y = torch.clamp(y, min=min_value, max=max_value)
+        y = torch.nan_to_num(y, nan=0., posinf=max_value, neginf=min_value)
         print('         freq_layer_filtered', y.mean().item())
 
         y = get_filtered_inverse_fft(y, crop_ratio=crop_ratio)
+        y = torch.clamp(y, min=min_value, max=max_value)
+        y = torch.nan_to_num(y, nan=0., posinf=max_value, neginf=min_value)
         print('         freq_back', y.mean().item())
 
         y = torch.cat((y_spatial, y), dim=1)
