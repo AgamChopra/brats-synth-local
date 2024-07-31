@@ -257,12 +257,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             torch.abs(x-y).detach().cpu()
         ], dim=0), 4, 2, dpi=250)
 
-        mse_val.append(torch.nan_to_num(sum(mse) / len(mse)))
-        mae_val.append(torch.nan_to_num(sum(mae) / len(mae)))
-        ssim_val.append(torch.nan_to_num(sum(ssim) / len(ssim)))
-        psnr_val.append(torch.nan_to_num(sum(psnr) / len(psnr)))
-        losses_val.append(torch.nan_to_num(
-            sum(losses_temp) / len(losses_temp)))
+        mse_val.append(sum(mse) / len(mse))
+        mae_val.append(sum(mae) / len(mae))
+        ssim_val.append(sum(ssim) / len(ssim))
+        psnr_val.append(sum(psnr) / len(psnr))
+        losses_val.append(
+            sum(losses_temp) / len(losses_temp))
         losses_temp = []
         mse, mae, psnr, ssim = [], [], [], []
 
