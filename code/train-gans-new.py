@@ -19,7 +19,7 @@ import dataloader
 import models
 from grokfast import gradfilter_ema
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
-from utils import SSIMLoss, GMELoss3D, grad_penalty
+from utils import SSIMLoss, GMELoss3D, grad_penalty, show_images
 
 # Set PyTorch printing precision
 torch.set_printoptions(precision=8)
@@ -52,16 +52,15 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         dropout (float, optional): Dropout rate. Default is 0.1.
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
-    print(device1, device2)
 
     # Initialize models
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=8,
-        embed_dim=256,
-        n_heads=8,
-        mlp_ratio=8,
+        fact=64,
+        embed_dim=1024,
+        n_heads=32,
+        mlp_ratio=64,
         qkv_bias=True,
         dropout_rate=0.,
         mask_downsample=30,
@@ -70,7 +69,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         device2=device2
     )
     print(
-        f'Gen. size: {models.count_parameters(generator)/1000000}M')
+        f'Gen. size: {models.count_parameters(generator)/1000000000}B')
     if model_path is not None:
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
@@ -142,7 +141,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         for itervar in range(num_batches):
             error_accum = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
-            if (itervar + 1) % 3 == 0:
+            if (itervar + 1) % 4 == 0:
                 print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
@@ -172,6 +171,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 optimizer.step()
 
                 losses.append(sum(error_accum)/len(error_accum))
+
+                print(f'  Error: {losses[-1]}')
 
             else:
                 print('Critic Optimization')
@@ -210,6 +211,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
                 critic_losses.append(sum(error_accum)/len(error_accum))
 
+                print(f'  Error: {critic_losses[-1]}')
+
         losses_train.append(sum(losses) / len(losses))
         losses = []
 
@@ -247,6 +250,13 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             ssim_metric(x.to(device2), y) + 1e-12).item())
                 psnr.append(psnr_metric(x.to(device2), y).item())
 
+        show_images([
+            x.detach().cpu(),
+            input_image.detach().cpu(),
+            y.detach().cpu(),
+            torch.abs(x-y).detach().cpu()
+        ], 4, 2, dpi=250)
+
         mse_val.append(torch.nan_to_num(sum(mse) / len(mse)))
         mae_val.append(torch.nan_to_num(sum(mae) / len(mae)))
         ssim_val.append(torch.nan_to_num(sum(ssim) / len(ssim)))
@@ -270,17 +280,17 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             torch.save(critic.state_dict(),
                        f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
 
-        if mse_val[-1] >= torch.nan_to_num(max(mse_val)) or epoch == 0:
+        if mse_val[-1] >= max(mse_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_mse_{identity}.pt")
             best_mse = epoch
 
-        if ssim_val[-1] >= torch.nan_to_num(max(ssim_val)) or epoch == 0:
+        if ssim_val[-1] >= max(ssim_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_ssim_{identity}.pt")
             best_ssim = epoch
 
-        if psnr_val[-1] >= torch.nan_to_num(max(psnr_val)) or epoch == 0:
+        if psnr_val[-1] >= max(psnr_val) or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_psnr_{identity}.pt")
             best_psnr = epoch
@@ -288,7 +298,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         norm_metrics = array([norm(mse_val), norm(ssim_val), norm(psnr_val)])
         avg_metrics = norm_metrics.sum(axis=0)
 
-        if avg_metrics[-1] >= torch.nan_to_num(avg_metrics.max()) or epoch == 0:
+        if avg_metrics[-1] >= avg_metrics.max() or epoch == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}best_average_{identity}.pt")
             best_avg = epoch
@@ -417,10 +427,15 @@ if __name__ == '__main__':
                         default=False, help='Enable or disable HYAK mode (default: False)')
     parser.add_argument('--identity', default='gans',
                         help='identity of the run (default: gans)')
+    parser.add_argument('--device1', default='cuda:0',
+                        help='device1 (default: cuda:0)')
+    parser.add_argument('--device2', default='cuda:0',
+                        help='device2 (default: cuda:0)')
     args = parser.parse_args()
     print(f"GUI Enabled: {args.gui}")
     print(f"HYAK Enabled: {args.hyak}")
     print(f"Identity: {args.identity}")
+    print(f"Device[1,2]: [{args.device1},{args.device2}]")
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
@@ -432,8 +447,8 @@ if __name__ == '__main__':
     lr = 1E-4
     batch = 1
     accumulated_batch = 32
-    device1 = 'cuda:0'
-    device2 = 'cuda:0'
+    device1 = args.device1
+    device2 = args.device2
     dropout = 0
 
     trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device1=device1,
