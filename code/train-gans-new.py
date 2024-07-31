@@ -405,7 +405,7 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 whole_mask = (x > 0.).float().to(device)
 
                 input_image = (x > 0) * ((mask < 0.5) * x)
-                y = nn.functional.sigmoid(model(input_image, mask))
+                y = model(input_image, mask)
                 synthetic_masked_region = mask * y * whole_mask
 
                 score = [scores[i](
@@ -453,7 +453,7 @@ if __name__ == '__main__':
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
-    model_path = 'best_average_gans_new.pt'
+    model_path = 'best_average_gans_new_noSigmoid.pt'
     critic_path = ''
     params = [model_path, critic_path]
     fresh = True
