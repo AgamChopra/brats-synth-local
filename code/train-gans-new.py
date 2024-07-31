@@ -369,8 +369,20 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
         HYAK (bool, optional): Flag to use HYAK paths. Default is False.
     """
     with torch.no_grad():
-        model = models.Attention_UNet(
-            in_c=2, out_c=1, dropout_rate=dropout).to(device)
+        model = models.Global_UNet(
+            in_c=1,
+            out_c=1,
+            fact=64,
+            embed_dim=1024,
+            n_heads=32,
+            mlp_ratio=64,
+            qkv_bias=True,
+            dropout_rate=0.,
+            mask_downsample=30,
+            noise=True,
+            device1=device,
+            device2=device
+        )
         state_dict = torch.load(
             f"{checkpoint_path}{model_path}", map_location=device)
         print(f"{checkpoint_path}{model_path}", device)
@@ -393,8 +405,7 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 whole_mask = (x > 0.).float().to(device)
 
                 input_image = (x > 0) * ((mask < 0.5) * x)
-                input_image = torch.cat((input_image, mask), dim=1)
-                y = torch.clip(model(input_image), 0., 1.)
+                y = model(input_image, mask)
                 synthetic_masked_region = mask * y * whole_mask
 
                 score = [scores[i](
@@ -431,15 +442,18 @@ if __name__ == '__main__':
                         help='device1 (default: cuda:0)')
     parser.add_argument('--device2', default='cuda:0',
                         help='device2 (default: cuda:0)')
+    parser.add_argument('--mode', default='validate',
+                        help='mode (train/validate/evaluate) (default: validate)')
     args = parser.parse_args()
     print(f"GUI Enabled: {args.gui}")
     print(f"HYAK Enabled: {args.hyak}")
     print(f"Identity: {args.identity}")
     print(f"Device[1,2]: [{args.device1},{args.device2}]")
+    print(f"Mode: {args.mode}")
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
-    model_path = ''
+    model_path = 'best_average_gans_new.pt'
     critic_path = ''
     params = [model_path, critic_path]
     fresh = True
@@ -451,14 +465,17 @@ if __name__ == '__main__':
     device2 = args.device2
     dropout = 0
 
-    trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch, device1=device1,
-        device2=device2, dropout=dropout, HYAK=HYAK, identity=args.identity,
-        accumulated_batch=accumulated_batch,
-        params=[None, None] if fresh else [f"{checkpoint_path}{model_path}",
-                                           f"{checkpoint_path}{critic_path}"]
-        )
+    if args.mode == 'train':
+        trn(checkpoint_path, epochs=epochs, lr=lr, batch=batch,
+            device1=device1, device2=device2, dropout=dropout,
+            HYAK=HYAK, identity=args.identity,
+            accumulated_batch=accumulated_batch,
+            params=[None, None] if fresh else [
+                f"{checkpoint_path}{model_path}",
+                f"{checkpoint_path}{critic_path}"
+                ])
 
-    # Uncomment to validate
-    # validate(checkpoint_path, model_path=model_path, epochs=2,
-    #          dropout=dropout, batch=batch, n=n, device=device, HYAK=HYAK,
-    #          gui=args.gui)
+    elif args.mode == 'validate':
+        validate(checkpoint_path, model_path=model_path, epochs=1,
+                 dropout=dropout, batch=batch, device=device1, HYAK=HYAK,
+                 gui=args.gui)

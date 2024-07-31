@@ -127,7 +127,7 @@ class Global_UNet(nn.Module):
         y = self.upsample(y)
         # print('upsample', y.mean().item())
         y = pad3d(y, target_shape)
-        y = nn.functional.sigmoid(y)
+        # y = nn.functional.sigmoid(y)
         # print('........\n')
         return y
 
