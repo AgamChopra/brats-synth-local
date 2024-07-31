@@ -241,7 +241,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 error_gans = critic(
                     torch.cat((input_image.to(device2), y), dim=1).float()).mean()
 
-                error = 10 * error_sup - 0.5 * error_gans
+                error = 1E4 * error_sup - 0.1 * error_gans
 
                 losses_temp.append(error.item())
                 mse.append(-torch.log10(mse_metric(x.to(device2), y) + 1e-12).item())
@@ -405,7 +405,7 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 whole_mask = (x > 0.).float().to(device)
 
                 input_image = (x > 0) * ((mask < 0.5) * x)
-                y = model(input_image, mask)
+                y = nn.functional.sigmoid(model(input_image, mask))
                 synthetic_masked_region = mask * y * whole_mask
 
                 score = [scores[i](
