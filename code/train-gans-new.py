@@ -141,7 +141,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         for itervar in range(num_batches):
             error_accum = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
-            if (itervar + 1) % 4 == 0:
+            if (itervar + 1) % 2 == 0:
                 print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
@@ -250,12 +250,12 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             ssim_metric(x.to(device2), y) + 1e-12).item())
                 psnr.append(psnr_metric(x.to(device2), y).item())
 
-        show_images([
+        show_images(torch.cat([
             x.detach().cpu(),
             input_image.detach().cpu(),
             y.detach().cpu(),
             torch.abs(x-y).detach().cpu()
-        ], 4, 2, dpi=250)
+        ], dim=0), 4, 2, dpi=250)
 
         mse_val.append(torch.nan_to_num(sum(mse) / len(mse)))
         mae_val.append(torch.nan_to_num(sum(mae) / len(mae)))
@@ -274,7 +274,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                             path=checkpoint_path if HYAK else None,
                             identity=identity)
 
-        if epoch % 1 == 0 and epoch != 0:
+        if epoch % 1 == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}checkpoint_{epoch}_epochs_{identity}.pt")
             torch.save(critic.state_dict(),
