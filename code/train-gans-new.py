@@ -68,15 +68,13 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         device1=device1,
         device2=device2
     )
-    print(
-        f'Gen. size: {models.count_parameters(generator)/1000000000}B')
+    print(f'Gen. size: {models.count_parameters(generator)/1000000000}B')
     if model_path is not None:
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=1).to(device2)
-    print(
-        f'Crit. size: {models.count_parameters(critic)/1000000}M')
+    critic = models.CriticA(in_c=2, fact=2).to(device2)
+    print(f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
         try:
             state_dict = torch.load(critic_path)
@@ -221,8 +219,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 critic_losses_fake.append(
                     sum(error_accum_fake)/len(error_accum_fake))
 
-                print(f'  Error: {
-                      critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
+                print(f'  Error: {critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
 
         losses_train.append(sum(losses) / len(losses))
         losses = []
@@ -238,8 +235,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             sum(critic_losses_fake) / len(critic_losses_fake))
         critic_losses_fake = []
 
-        print(
-            f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
+        print(f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
 
         # Validation loop
         generator.eval()
@@ -328,7 +324,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             f'Best epochs for mse: {best_mse}, ssim: {best_ssim}, psnr: {best_psnr}, norm_average: {best_avg}')
 
     torch.save(generator.state_dict(),
-               f"{checkpoint_path}checkpoint_{epochs}_epochs_{identity}.pt")
+               f"{checkpoint_path}checkpoint_final_{epochs}_epochs_{identity}.pt")
 
 
 def trn(checkpoint_path,
@@ -471,8 +467,8 @@ if __name__ == '__main__':
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
-    model_path = 'best_average_gans_new_noSigmoid.pt'
-    critic_path = ''
+    model_path = 'checkpoint_latest_{args.identity}.pt'
+    critic_path = 'critic_checkpoint_latest_{args.identity}.pt'
     params = [model_path, critic_path]
     fresh = True
     epochs = 1000
