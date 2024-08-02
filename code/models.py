@@ -13,7 +13,7 @@ import torch.nn as nn
 from utils import pad3d, count_parameters
 from attention import VisionTransformer3D
 
-from network import AttentionGrid, Block
+from network import AttentionGrid, Block, Upsample
 from network import TransformerBlockDown, TransformerBlockUp, TransformerBlockLatant
 
 
@@ -87,11 +87,12 @@ class Global_UNet(nn.Module):
         ]).to(device=device2)
 
         self.upsample = nn.Sequential(
-            nn.ConvTranspose3d(in_c * fact, in_c,
-                               kernel_size=4, stride=4, padding=8),
-            nn.InstanceNorm3d(in_c),
-            nn.GELU(),
-            nn.Conv3d(in_c, out_c, kernel_size=1)
+            Upsample(in_c * fact, in_c,
+                     scale_factor=4,
+                     dropout=dropout_rate,
+                     kernel_size=3,
+                     stride=1),
+            nn.Conv3d(in_c, out_c, kernel_size=1)      
         ).to(device=device2)
 
     def forward(self, x, mask):
@@ -112,22 +113,24 @@ class Global_UNet(nn.Module):
             # print('encoder', y.mean().item(), y_skip.mean().item())
 
         for layer in self.latent_layer:
-            ## print(y.shape, mask.shape)
+            #print(y.shape, mask.shape)
             y = layer(y, latent_mask)
             # print('latent', y.mean().item())
 
         y = y.to(device=self.device2)
         for layer, encoder_output in zip(self.decoder_layers,
                                          encoder_outputs[::-1]):
-            # # print(y.shape, encoder_output.shape)
+            # print(y.shape, encoder_output.shape)
             y = layer(
                 torch.cat((pad3d(y, encoder_output), encoder_output), dim=1))
             # print('decoder', y.mean().item())
-
+        
+        # print(y.shape)
         y = self.upsample(y)
         # print('upsample', y.mean().item())
-        y = pad3d(y, target_shape)
+        # print(y.shape)
         # y = nn.functional.sigmoid(y)
+        y = nn.functional.interpolate(y, size=target_shape, mode='trilinear')
         # print('........\n')
         return y
 
@@ -243,97 +246,6 @@ class CriticA(nn.Module):
         return x.squeeze()
 
 
-class Critic(nn.Module):
-    """
-    Critic model for adversarial training.
-
-    Args:
-        in_c (int, optional): Number of input channels. Default is 1.
-        fact (int, optional): Scaling factor for the number of channels. Default is 1.
-    """
-
-    def __init__(self, in_c=1, fact=1):
-        super(Critic, self).__init__()
-        self.c = fact
-
-        self.E = nn.Sequential(
-            nn.utils.spectral_norm(
-                nn.Conv3d(in_c, self.c * 8, kernel_size=5, stride=5)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.utils.spectral_norm(
-                nn.Conv3d(self.c * 8, self.c * 8, kernel_size=5, stride=5)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.utils.spectral_norm(
-                nn.Conv3d(self.c * 8, self.c * 8, kernel_size=5, stride=5)),
-            nn.LeakyReLU(0.2, inplace=True)
-        )
-
-        self.fc = nn.Sequential(nn.Linear(self.c * 8, 1))
-
-    def forward(self, x):
-        target_shape = x.shape[2:]
-        y = pad3d(x.float(), max(target_shape))
-        y = self.E(y)
-        y = self.fc(y.squeeze())
-        return y
-
-
-class Critic_VT(nn.Module):
-    """
-    Vision Transformer-based Critic model for adversarial training.
-
-    Args:
-        in_c (int, optional): Number of input channels. Default is 1.
-        fact (int, optional): Scaling factor for the number of channels. Default is 1.
-    """
-
-    def __init__(self, in_c=1, fact=1):
-        super(Critic_VT, self).__init__()
-        self.c = fact
-
-        self.E = nn.Sequential(
-            nn.utils.spectral_norm(
-                nn.Conv3d(in_c, self.c * 8, kernel_size=5, stride=5)),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.fc1 = VisionTransformer3D(
-            img_size=48,
-            patch_size=12,
-            in_c=self.c * 8,
-            n_classes=1,
-            embed_dim=64,
-            depth=4,
-            n_heads=4,
-            mlp_ratio=4,
-            qkv_bias=False,
-            dropout=0.
-        )
-
-        self.fc2 = VisionTransformer3D(
-            img_size=48,
-            patch_size=4,
-            in_c=self.c * 8,
-            n_classes=1,
-            embed_dim=64,
-            depth=4,
-            n_heads=4,
-            mlp_ratio=4,
-            qkv_bias=False,
-            dropout=0.
-        )
-
-        self.out = nn.Linear(2, 1)
-
-    def forward(self, x):
-        target_shape = x.shape[2:]
-        y = pad3d(x.float(), max(target_shape))
-        y = self.E(y)
-        y1, y2 = self.fc1(y), self.fc2(y)
-        y = self.out(torch.cat((y1, y2), dim=1))
-        return y.view(x.shape[0])
-
-
 def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     """
     Test function to instantiate and test the models.
@@ -350,14 +262,14 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     mask = torch.ones((B, 1, 240, 240, 240), device=device)
 
     model = Global_UNet(in_c=ic, out_c=oc, fact=4,
-                        embed_dim=32, n_heads=4,
+                        embed_dim=16, n_heads=4,
                         mlp_ratio=4, qkv_bias=True,
                         dropout_rate=0.,
                         mask_downsample=30,
                         noise=True, device1=device, device2=device)
     print(f'Generator size: {int(count_parameters(model)/1000000)}M')
 
-    critic = CriticA(in_c=2, fact=2).to(device)
+    critic = CriticA(in_c=2, fact=1).to(device)
     print(f'Critic size: {int(count_parameters(critic)/1000000)}M')
 
     optimizer = torch.optim.AdamW(
@@ -366,9 +278,9 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
     b = model(a, mask)
     c = critic(torch.cat((b, a), dim=1))
 
-    print(a.shape, mask.shape)
-    print(b.shape)
-    print(c, c.shape)
+    print(f'a:{a.shape}, m:{mask.shape}')
+    print(f'b:{b.shape}')
+    print(f'c:{c.shape}, {c}')
 
     error = -c
     error.backward()

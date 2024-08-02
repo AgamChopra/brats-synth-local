@@ -497,7 +497,8 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
 
         plt.figure(dpi=dpi)
         plt.plot(losses_train, label='Generator Training Error')
-        plt.plot(losses_val, label='Generator Validation Error')
+        plt.plot(losses_val[0], label='Critic Training Real Error')
+        plt.plot(losses_val[1], label='Critic Training Fake Error')
         plt.plot(critic_losses_train, label='Critic Training Error')
         plt.title('GANs Error')
         plt.xlabel('Epoch')

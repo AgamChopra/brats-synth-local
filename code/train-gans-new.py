@@ -127,6 +127,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     # Initialize lists for logging losses and metrics
     losses, losses_train, losses_temp, losses_val = [], [], [], []
     critic_losses, critic_losses_train = [], []
+    critic_losses_real, critic_losses_fake = [], []
+    critic_losses_train_real, critic_losses_train_fake = [], []
     mse, mae, psnr, ssim = [], [], [], []
     mse_val, mae_val, psnr_val, ssim_val = [], [], [], []
 
@@ -140,6 +142,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
         for itervar in range(num_batches):
             error_accum = []
+            error_accum_real = []
+            error_accum_fake = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
             if (itervar + 1) % 2 == 0:
                 print('Generator Optimization')
@@ -204,24 +208,38 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     error = error_fake - error_real + penalty
                     error.backward(retain_graph=True)
                     error_accum.append(error.item())
+                    error_accum_real.append(error_real.item())
+                    error_accum_fake.append(error_fake.item())
 
                 gradsC = gradfilter_ema(
                     critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
                 optimizerC.step()
 
                 critic_losses.append(sum(error_accum)/len(error_accum))
+                critic_losses_real.append(
+                    sum(error_accum_real)/len(error_accum_real))
+                critic_losses_fake.append(
+                    sum(error_accum_fake)/len(error_accum_fake))
 
-                print(f'  Error: {critic_losses[-1]}')
+                print(f'  Error: {
+                      critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
 
         losses_train.append(sum(losses) / len(losses))
         losses = []
 
-        critic_losses_train.append(
-            sum(critic_losses) / len(critic_losses))
+        critic_losses_train.append(sum(critic_losses) / len(critic_losses))
         critic_losses = []
 
+        critic_losses_train_real.append(
+            sum(critic_losses_real) / len(critic_losses_real))
+        critic_losses_real = []
+
+        critic_losses_train_fake.append(
+            sum(critic_losses_fake) / len(critic_losses_fake))
+        critic_losses_fake = []
+
         print(
-            f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}')
+            f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
 
         # Validation loop
         generator.eval()
@@ -266,19 +284,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         losses_temp = []
         mse, mae, psnr, ssim = [], [], [], []
 
-        if (epoch % 1 == 0 or epoch == epochs - 1) and epoch != 0:
-            train_visualize([critic_losses_train, losses_train,
-                             losses_val, mae_val,
-                            mse_val, ssim_val, psnr_val],
-                            gans=True, dpi=180,
-                            path=checkpoint_path if HYAK else None,
-                            identity=identity)
+        train_visualize([critic_losses_train, losses_train,
+                         [critic_losses_train_real,
+                             critic_losses_train_fake], mae_val,
+                         mse_val, ssim_val, psnr_val],
+                        gans=True, dpi=180,
+                        path=checkpoint_path if HYAK else None,
+                        identity=identity)
 
         if epoch % 1 == 0:
             torch.save(generator.state_dict(),
-                       f"{checkpoint_path}checkpoint_{epoch}_epochs_{identity}.pt")
+                       f"{checkpoint_path}checkpoint_latest_{identity}.pt")
             torch.save(critic.state_dict(),
-                       f"{checkpoint_path}critic_checkpoint_{epoch}_epochs_{identity}.pt")
+                       f"{checkpoint_path}critic_checkpoint_latest_{identity}.pt")
 
         if mse_val[-1] >= max(mse_val) or epoch == 0:
             torch.save(generator.state_dict(),
@@ -473,7 +491,7 @@ if __name__ == '__main__':
             params=[None, None] if fresh else [
                 f"{checkpoint_path}{model_path}",
                 f"{checkpoint_path}{critic_path}"
-                ])
+            ])
 
     elif args.mode == 'validate':
         validate(checkpoint_path, model_path=model_path, epochs=1,

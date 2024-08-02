@@ -12,7 +12,25 @@ import torch.nn.functional as F
 
 from utils import pad3d
 from linear_attention import VisionTransformerBlock
-from fourier_neural_operator import FNOBlock
+from fourier_neural_operator import FourierBlock
+
+
+class Upsample(nn.Module):
+    def __init__(self, in_c=1, out_c=1, dropout=0.3, scale_factor=2,
+                 kernel_size=1, stride=1):
+        super(Upsample, self).__init__()
+        self.scale_factor = scale_factor
+        self.conv = nn.Sequential(nn.Conv3d(in_c, out_c,
+                                            kernel_size=kernel_size,
+                                            stride=stride),
+                                  nn.InstanceNorm3d(out_c),
+                                  nn.GELU(),
+                                  nn.Dropout3d(dropout))
+
+    def forward(self, x):
+        y = F.interpolate(x, scale_factor=self.scale_factor, mode='nearest')
+        y = self.conv(y)
+        return y
 
 
 class DepthwiseFeedForwardBlock(nn.Module):
@@ -27,6 +45,7 @@ class DepthwiseFeedForwardBlock(nn.Module):
                                   nn.InstanceNorm3d(in_c),
                                   nn.GELU())
         self.rectifire = nn.Sequential(nn.Conv3d(in_c, in_c, kernel_size=1),
+                                       nn.InstanceNorm3d(in_c),
                                        nn.Dropout3d(dropout))
 
     def forward(self, x):
@@ -60,19 +79,23 @@ class FourierGateAttentionBlock(nn.Module):
             dropout=dropout_rate
         )
 
-        # self.frequency_block = FNOBlock(
-        #     in_c, int(embed_dim/2) * in_c, out_c, dropout_rate)
+        self.frequency_block = FourierBlock(
+            in_c, in_c, out_c,
+            img_size, dropout_rate)
 
-        # self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c, kernel_size=1),
-        #                                  nn.Dropout3d(dropout_rate))
+        self.merge_block = nn.Sequential(nn.Conv3d(2*out_c, out_c,
+                                                   kernel_size=1,
+                                                   groups=2),
+                                         nn.InstanceNorm3d(out_c),
+                                         nn.Dropout3d(dropout_rate))
 
     def forward(self, x):
-        # y1 = self.frequency_block(x)
-        # # print('      FreqBlock', y1.mean().item())
-        y = self.vision_block(x)
-        # print('      VisBlock', y.mean().item())
-        # y = self.merge_block(torch.cat((y1, y2), dim=1))
-        # # print('      MergeBlock', y.mean().item())
+        y1 = self.frequency_block(x)
+        # print('      FreqBlock', y1.mean().item())
+        y2 = self.vision_block(x)
+        # print('      VisBlock', y2.mean().item())
+        y = self.merge_block(torch.cat((y1, y2), dim=1))
+        # print('      MergeBlock', y.mean().item())
         y = x + y
         # print('      sum', y.mean().item())
         return y
@@ -117,8 +140,11 @@ class TransformerBlockDown(nn.Module):
                              embed_dim, n_heads,
                              mlp_ratio, qkv_bias,
                              dropout_rate),
-            nn.Conv3d(in_c, 2 * in_c, kernel_size=2, stride=2)]
-        )
+            nn.Sequential(nn.Conv3d(in_c, 2 * in_c, kernel_size=2, stride=2),  # !!! k=2, s=2
+                          nn.InstanceNorm3d(2 * in_c),
+                          nn.GELU(),
+                          nn.Dropout3d(dropout_rate))
+        ])
 
     def forward(self, x):
         y_skip = self.layers[0](x)
@@ -144,8 +170,8 @@ class TransformerBlockUp(nn.Module):
                              dropout_rate)
         )
         if not self.final:
-            self.up = nn.ConvTranspose3d(int(in_c/2), int(in_c/4),
-                                         kernel_size=2, stride=2)
+            self.up = Upsample(int(in_c/2), int(in_c/4),
+                               scale_factor=2, dropout=dropout_rate)
 
     def forward(self, x):
         y = self.layers(x)
@@ -175,13 +201,13 @@ class TransformerBlockLatant(nn.Module):
                              embed_dim, n_heads,
                              mlp_ratio, qkv_bias,
                              dropout_rate),
-            nn.ConvTranspose3d(in_c, int(in_c/2),
-                               kernel_size=2, stride=2))
+            Upsample(in_c, int(in_c/2), scale_factor=2,
+                     dropout=dropout_rate))
 
     def forward(self, x, mask):
         encodings = self.noise_mask_layer(mask * (
             torch.rand_like(mask, device=mask.device) if self.noise else 1.))
-        ## print(x.shape, encodings.shape)
+        # print(x.shape, encodings.shape)
         y = x + encodings
         y = self.layers(y)
         return y
