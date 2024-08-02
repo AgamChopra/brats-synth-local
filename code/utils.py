@@ -508,15 +508,14 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
 
     else:
         losses_train, losses_val, mae_val, mse_val, ssim_val, psnr_val = metrics
-
-    plt.figure(dpi=dpi)
-    plt.plot(losses_train, label='Training Error')
-    plt.plot(losses_val, label='Validation Error')
-    plt.title('Synthesis Error')
-    plt.xlabel('Epoch')
-    plt.ylabel('Metrics')
-    plt.legend()
-    save_plot(filepath=f'{path}{identity}_synth_loss.png' if path else None)
+        plt.figure(dpi=dpi)
+        plt.plot(losses_train, label='Training Error')
+        plt.plot(losses_val, label='Validation Error')
+        plt.title('Synthesis Error')
+        plt.xlabel('Epoch')
+        plt.ylabel('Metrics')
+        plt.legend()
+        save_plot(filepath=f'{path}{identity}_synth_loss.png' if path else None)
 
     plt.figure(dpi=dpi)
     plt.plot(norm(mae_val), label='-log(MAE)', color='grey')
@@ -537,8 +536,6 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
     plot_metric(axs[0, 1], mse_val, '-log(MSE)', 'red')
     plot_metric(axs[1, 0], ssim_val, '-log(1-SSIM)', 'green', '--')
     plot_metric(axs[1, 1], psnr_val, 'PSNR', 'blue', '--')
-    plt.xlabel('Epoch')
-    plt.ylabel('Score')
     plt.tight_layout()
     save_plot(
         filepath=f'{path}{identity}_validation_metrics.png' if path else None)
@@ -573,5 +570,5 @@ def plot_metric(ax, metric, title, color, linestyle='-'):
     ax.plot(metric, label=title, color=color, linestyle=linestyle)
     ax.set_title(title)
     ax.set_xlabel('Epoch')
-    ax.set_ylabel('Normalized Metric Score')
+    ax.set_ylabel('Score')
     ax.legend()

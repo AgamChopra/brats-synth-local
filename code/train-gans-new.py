@@ -143,7 +143,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             error_accum_real = []
             error_accum_fake = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
-            if (itervar + 1) % 2 == 0:
+            if (itervar + 1) % 5 == 0:
                 print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
