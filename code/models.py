@@ -32,7 +32,7 @@ class Global_UNet(nn.Module):
                  embed_dim=512, n_heads=8,
                  mlp_ratio=8, qkv_bias=True,
                  dropout_rate=0.3,
-                 mask_downsample=8,
+                 mask_downsample=16,
                  noise=True,
                  device1='cpu', device2='cpu'):
         super(Global_UNet, self).__init__()
@@ -42,28 +42,28 @@ class Global_UNet(nn.Module):
         self.device2 = device2
 
         self.downsample = nn.Sequential(
-            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=1, padding=3),
+            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=2, padding=3),
             nn.InstanceNorm3d(in_c * fact),
             nn.GELU()
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c * fact, img_size=240, patch_size=48,
+            TransformerBlockDown(in_c * fact, img_size=120, patch_size=24,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockDown(2 * in_c * fact, img_size=60, patch_size=12,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(4 * in_c * fact, img_size=60, patch_size=12,
+            TransformerBlockDown(4 * in_c * fact, img_size=30, patch_size=6,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio)
         ]).to(device=device1)
 
         self.latent_layer = nn.ModuleList([
-            TransformerBlockLatant(8 * in_c * fact, img_size=30, patch_size=6,
+            TransformerBlockLatant(8 * in_c * fact, img_size=15, patch_size=5,
                                    dropout_rate=dropout_rate,
                                    embed_dim=embed_dim, qkv_bias=qkv_bias,
                                    mlp_ratio=mlp_ratio,
@@ -72,15 +72,15 @@ class Global_UNet(nn.Module):
         ]).to(device=device1)
 
         self.decoder_layers = nn.ModuleList([
-            TransformerBlockUp(8 * in_c * fact, img_size=60, patch_size=12,
+            TransformerBlockUp(8 * in_c * fact, img_size=30, patch_size=6,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(4 * in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockUp(4 * in_c * fact, img_size=60, patch_size=12,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(2 * in_c * fact, img_size=240, patch_size=48,
+            TransformerBlockUp(2 * in_c * fact, img_size=120, patch_size=24,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio, final=True)
@@ -268,7 +268,7 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
                         embed_dim=8, n_heads=4,
                         mlp_ratio=4, qkv_bias=True,
                         dropout_rate=0.,
-                        mask_downsample=8,
+                        mask_downsample=16,
                         noise=True, device1=device, device2=device)
     print(f'Generator size: {int(count_parameters(model)/1000000)}M')
 
@@ -292,4 +292,4 @@ def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
 
 
 if __name__ == '__main__':
-    test_model('cpu', B=1, n=64)
+    test_model('cuda', B=1, n=64)
