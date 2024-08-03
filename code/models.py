@@ -112,7 +112,7 @@ class Global_UNet(nn.Module):
         for layer in self.encoder_layers:
             y, y_skip = layer(y)
             encoder_outputs.append(y_skip.to(self.device2))
-            print('encoder', y.shape, y_skip.shape)
+            # print('encoder', y.shape, y_skip.shape)
             # print('encoder', y.mean().item(), y_skip.mean().item())
 
         for layer in self.latent_layer:
