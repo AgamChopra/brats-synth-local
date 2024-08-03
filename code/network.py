@@ -17,7 +17,7 @@ from fourier_neural_operator import FourierBlock
 
 class Upsample(nn.Module):
     def __init__(self, in_c=1, out_c=1, dropout=0.3, scale_factor=2,
-                 kernel_size=1, stride=1):
+                 kernel_size=3, stride=1, padding=1):
         super(Upsample, self).__init__()
         self.scale_factor = scale_factor
         self.conv = nn.Sequential(nn.Conv3d(in_c, out_c,
@@ -140,7 +140,10 @@ class TransformerBlockDown(nn.Module):
                              embed_dim, n_heads,
                              mlp_ratio, qkv_bias,
                              dropout_rate),
-            nn.Sequential(nn.Conv3d(in_c, 2 * in_c, kernel_size=2, stride=2),  # !!! k=2, s=2
+            nn.Sequential(nn.Conv3d(in_c, 2 * in_c,
+                                    kernel_size=3,
+                                    stride=2,
+                                    padding=1),  # !!! k=2, s=2
                           nn.InstanceNorm3d(2 * in_c),
                           nn.GELU(),
                           nn.Dropout3d(dropout_rate))
