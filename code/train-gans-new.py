@@ -20,6 +20,7 @@ import models
 from grokfast import gradfilter_ema
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
 from utils import SSIMLoss, GMELoss3D, grad_penalty, show_images
+from utils import match_contrast_inpaint, match_histogram
 
 # Set PyTorch printing precision
 torch.set_printoptions(precision=8)
@@ -219,7 +220,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                 critic_losses_fake.append(
                     sum(error_accum_fake)/len(error_accum_fake))
 
-                print(f'  Error: {critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
+                print(f'  Error: {
+                      critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
 
         losses_train.append(sum(losses) / len(losses))
         losses = []
@@ -235,7 +237,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             sum(critic_losses_fake) / len(critic_losses_fake))
         critic_losses_fake = []
 
-        print(f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
+        print(f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{
+              critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
 
         # Validation loop
         generator.eval()
@@ -422,8 +425,13 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 y = model(input_image, mask)
                 synthetic_masked_region = mask * y * whole_mask
 
+                synthetic_masked_region, _ = match_contrast_inpaint(
+                    synthetic_masked_region, input_image, mask)
+
                 score = [scores[i](
-                    x, x * (mask < 0.5) + synthetic_masked_region) for i in range(len(scores))]
+                    x,
+                    input_image + synthetic_masked_region
+                    ) for i in range(len(scores))]
 
                 mse.append(score[0].item())
                 mae.append(score[1].item())
@@ -434,7 +442,7 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                     dataloader.show_images(
                         torch.cat(
                             (x.cpu(), input_image[:, 0:1].cpu(),
-                             (synthetic_masked_region + (x * (mask < 0.5))).cpu(),
+                             (input_image + synthetic_masked_region).cpu(),
                              y.cpu(), synthetic_masked_region.cpu(),
                              torch.abs(x * mask - synthetic_masked_region).cpu()),
                             dim=0), 6, 3, dpi=350)
