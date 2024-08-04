@@ -105,6 +105,7 @@ class Global_UNet(nn.Module):
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
+        y_feature = y
         # print('\n...model...')
         # print('downsample', y.mean().item())
 
@@ -129,6 +130,7 @@ class Global_UNet(nn.Module):
             # print('decoder', y.mean().item())
 
         # print(y.shape)
+        y = y + y_feature
         y = self.upsample(y)
         # print('upsample', y.mean().item())
         # print(y.shape)

@@ -58,7 +58,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         in_c=1,
         out_c=1,
         fact=32,
-        embed_dim=384,
+        embed_dim=256,
         n_heads=16,
         mlp_ratio=32,
         qkv_bias=True,
@@ -73,7 +73,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=2).to(device2)
+    critic = models.CriticA(in_c=2, fact=1).to(device2)
     print(f'Crit. size: {models.count_parameters(critic)/1000000}M')
     if critic_path is not None:
         try:
@@ -143,7 +143,7 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
             error_accum_real = []
             error_accum_fake = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
-            if (itervar + 1) % 5 == 0:
+            if (itervar + 1) % 2 == 0:
                 print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
