@@ -11,9 +11,8 @@ import torch
 import torch.nn as nn
 
 from utils import pad3d, count_parameters
-# from attention import VisionTransformer3D
 
-from network import AttentionGrid, Block, Upsample
+from network import AttentionGrid, Block
 from network import TransformerBlockDown, TransformerBlockUp, TransformerBlockLatant
 
 
@@ -42,28 +41,24 @@ class Global_UNet(nn.Module):
         self.device2 = device2
 
         self.downsample = nn.Sequential(
-            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=2, padding=3),
+            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=1, padding=3),
             nn.InstanceNorm3d(in_c * fact),
             nn.GELU()
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockDown(in_c * fact, img_size=240, patch_size=24,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c * fact, img_size=60, patch_size=12,
-                                 dropout_rate=dropout_rate,
-                                 embed_dim=embed_dim, qkv_bias=qkv_bias,
-                                 mlp_ratio=mlp_ratio),
-            TransformerBlockDown(4 * in_c * fact, img_size=30, patch_size=6,
+            TransformerBlockDown(2 * in_c * fact, img_size=120, patch_size=24,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio)
         ]).to(device=device1)
 
         self.latent_layer = nn.ModuleList([
-            TransformerBlockLatant(8 * in_c * fact, img_size=15, patch_size=5,
+            TransformerBlockLatant(8 * in_c * fact, img_size=60, patch_size=12,
                                    dropout_rate=dropout_rate,
                                    embed_dim=embed_dim, qkv_bias=qkv_bias,
                                    mlp_ratio=mlp_ratio,
@@ -72,32 +67,21 @@ class Global_UNet(nn.Module):
         ]).to(device=device1)
 
         self.decoder_layers = nn.ModuleList([
-            TransformerBlockUp(8 * in_c * fact, img_size=30, patch_size=6,
+            TransformerBlockUp(4 * in_c * fact, img_size=120, patch_size=24,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(4 * in_c * fact, img_size=60, patch_size=12,
-                               dropout_rate=dropout_rate,
-                               embed_dim=embed_dim, qkv_bias=qkv_bias,
-                               mlp_ratio=mlp_ratio),
-            TransformerBlockUp(2 * in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockUp(2 * in_c * fact, img_size=240, patch_size=24,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio, final=True)
         ]).to(device=device2)
 
         self.upsample = nn.Sequential(
-            nn.Conv3d(in_c * fact, out_c,
-                      kernel_size=7,
-                      stride=1,
-                      padding=3),
-            nn.InstanceNorm3d(in_c),
-            nn.GELU(),
-            nn.Dropout3d(dropout_rate),
-            nn.Conv3d(out_c, out_c, kernel_size=1)
+            nn.Conv3d(in_c * fact, out_c, kernel_size=7, stride=1, padding=3)
         ).to(device=device2)
 
-    def forward(self, x, mask):
+    def forward(self, x, mask, type_='v6'):
         target_shape = x.shape[2:]
 
         y = pad3d(x.float(), 240)
@@ -105,6 +89,7 @@ class Global_UNet(nn.Module):
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
+        # y_struc = y
         # print('\n...model...')
         # print('downsample', y.mean().item())
 
@@ -130,12 +115,11 @@ class Global_UNet(nn.Module):
 
         # print(y.shape)
         y = self.upsample(y)
+        y = nn.functional.sigmoid(y)
         # print('upsample', y.mean().item())
         # print(y.shape)
-        # y = nn.functional.sigmoid(y)
-        y = nn.functional.interpolate(y, size=target_shape, mode='trilinear')
-        y = y * nn.functional.sigmoid(x + mask)
-        # print('........\n')
+        y = nn.functional.interpolate(y, size=240)
+        y = pad3d(y, target=target_shape)
         return y
 
 

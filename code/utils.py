@@ -515,8 +515,7 @@ def train_visualize(metrics, gans=False, dpi=200, path=None, identity=''):
         plt.xlabel('Epoch')
         plt.ylabel('Metrics')
         plt.legend()
-        save_plot(filepath=f'{path}{
-                  identity}_synth_loss.png' if path else None)
+        save_plot(filepath=f'{path}{identity}_synth_loss.png' if path else None)
 
     plt.figure(dpi=dpi)
     plt.plot(norm(mae_val), label='-log(MAE)', color='grey')

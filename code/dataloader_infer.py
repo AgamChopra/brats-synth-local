@@ -11,8 +11,30 @@ import os
 import concurrent.futures
 import torch
 import nibabel as nib
+import numpy as np
 
-from utils import norm
+
+def norm(x):
+    """
+    Normalize the input tensor or array.
+
+    Args:
+        x (torch.tensor or np.array): Input data to be normalized.
+
+    Returns:
+        torch.tensor or np.array: Normalized data.
+    """
+    EPSILON = 1E-9
+    if torch.is_tensor(x):
+        return (x - torch.min(x)) / (torch.max(x) - torch.min(x) + EPSILON)
+    else:
+        try:
+            return (x - np.min(x)) / (np.max(x) - np.min(x) + EPSILON)
+        except Exception:
+            try:
+                return [(i - min(x)) / (max(x) - min(x)) for i in x]
+            except Exception:
+                print('WARNING: Input could not be normalized!')
 
 
 def load_patient(path, filename, nrm=True):
@@ -27,13 +49,15 @@ def load_patient(path, filename, nrm=True):
     Returns:
         torch.tensor: Loaded patient data tensor.
     """
-    image = torch.from_numpy(nib.load(os.path.join(path, os.path.join(
-        filename, filename + '-t1n.nii.gz'))).get_fdata())[None, None, ...].float()
+    nib_image = nib.load(os.path.join(path, os.path.join(
+        filename, filename + '-t1n-voided.nii.gz')))
+    affine = nib_image.affine
+    image = torch.from_numpy(nib_image.get_fdata())[None, None, ...].float()
     mask = torch.from_numpy(nib.load(os.path.join(path, os.path.join(
         filename, filename + '-mask.nii.gz'))).get_fdata())[None, None, ...].float()
     if nrm:
         image = norm(image)
-    return (image, mask, filename)
+    return (image, mask, filename, affine)
 
 
 def list_folders(path):
@@ -114,8 +138,8 @@ class DataLoader:
         """
         futures = [self.executor.submit(
             load_patient, self.path, sample, self.nrm) for sample in sample_list]
-        image_mask_filename = [future.result() for future in futures]
-        return image_mask_filename
+        image_mask_filename_affine = [future.result() for future in futures]
+        return image_mask_filename_affine
 
     def load_batch(self):
         """
@@ -126,6 +150,11 @@ class DataLoader:
         """
         sample = self.future_batch.result()[0]
         self.pre_fetch_next_batch()
-        image, mask, filename = sample[0], sample[1], sample[2]
+        image, mask, filename, affine = sample[0], sample[1], sample[2], sample[3]
 
-        return image, mask, filename
+        print(image.shape)
+        print(mask.shape)
+        print(filename)
+        print(affine)
+
+        return image, mask, filename, affine

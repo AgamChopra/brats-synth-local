@@ -1,15 +1,14 @@
 typer==0.9.0
 PyYAML==6.0
-nibabel==
-tqdm==
-pytorch_msssim==
-matplotlib==
-scipy==
-pynvml==
-argparse==
-collections==
-typing==
-numpy==
-torch==
-torchvision==
+nibabel
+tqdm
+pytorch_msssim
+matplotlib
+scipy
+pynvml
+argparse
+typing
+numpy
+torch
+torchvision
 --extra-index-url https://download.pytorch.org/whl/cpu

@@ -20,7 +20,7 @@ import models
 from grokfast import gradfilter_ema
 from utils import PSNR_Metric, SSIM_Metric, train_visualize, norm
 from utils import SSIMLoss, GMELoss3D, grad_penalty, show_images
-from utils import match_contrast_inpaint
+from utils import match_contrast_inpaint, match_histogram
 
 # Set PyTorch printing precision
 torch.set_printoptions(precision=8)
@@ -58,14 +58,14 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     generator = models.Global_UNet(
         in_c=1,
         out_c=1,
-        fact=64,
-        embed_dim=1024,
-        n_heads=32,
-        mlp_ratio=64,
+        fact=32,
+        embed_dim=256,
+        n_heads=16,
+        mlp_ratio=32,
         qkv_bias=True,
-        dropout_rate=0.1,
-        mask_downsample=8,
-        noise=False,
+        dropout_rate=0.,
+        mask_downsample=16,
+        noise=True,
         device1=device1,
         device2=device2
     )
@@ -74,28 +74,27 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         state_dict = torch.load(model_path)
         generator.load_state_dict(state_dict, strict=True)
 
-    critic = models.CriticA(in_c=2, fact=1).to(device2)
-    print(f'Crit. size: {models.count_parameters(critic)/1000000}M')
-    if critic_path is not None:
-        try:
-            state_dict = torch.load(critic_path)
-            critic.load_state_dict(state_dict, strict=True)
-        except Exception:
-            print(f"{critic_path} not found!")
+    # critic = models.CriticA(in_c=1, fact=1).to(device2)
+    # print(f'Crit. size: {models.count_parameters(critic)/1000000}M')
+    # if critic_path is not None:
+    #     try:
+    #         state_dict = torch.load(critic_path)
+    #         critic.load_state_dict(state_dict, strict=True)
+    #     except Exception:
+    #         print(f"{critic_path} not found!")
 
     # Initialize optimizers
     grads = None
     gradsC = None
     optimizer = torch.optim.AdamW(generator.parameters(), lr)
-    optimizerC = torch.optim.AdamW(
-        critic.parameters(), lr, betas=(beta1, beta2))
+    # optimizerC = torch.optim.AdamW(
+    #     critic.parameters(), lr, betas=(beta1, beta2))
 
     # Initialize loss functions and criteria
     criterion = [SSIMLoss(win_size=3, win_sigma=0.1),
                  GMELoss3D(),
-                 nn.L1Loss(),
-                 nn.MSELoss()]
-    lambdas = [0.75, 0.25, 0.25, 0.25]
+                 nn.L1Loss()]
+    lambdas = [0.5, 0.25, 0.25]
 
     # Initialize dataloaders
     dataloader_paths = [
@@ -138,14 +137,14 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
     for epoch in range(epochs):
         print(f'Epoch {epoch}:')
         generator.train()
-        critic.train()
+        # critic.train()
 
         for itervar in range(num_batches):
             error_accum = []
             error_accum_real = []
             error_accum_fake = []
             print(f'Batch {itervar + 1}/{num_batches + 1}:')
-            if (itervar + 1) % 4 == 0:
+            if (itervar + 1) % 1 == 0:
                 print('Generator Optimization')
                 optimizer.zero_grad()
                 for _ in trange(accumulated_batch):
@@ -156,24 +155,19 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
                     x, mask = x.float().to(device1), mask.float().to(device1)
                     input_image = (x > 0) * ((mask < 0.5) * x)
 
-                    y = generator(
-                        input_image + mask * torch.rand_like(mask,
-                                                             device=device1),
-                        mask).float()
+                    y = generator(input_image, mask).float()
                     # print(y.mean().item())
 
-                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2),
-                                                               y)
+                    error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
                                      for i in range(len(criterion))])
                     # print(error_sup.item())
-                    error_gans = critic(
-                        torch.cat((input_image.to(device2), y),
-                                  dim=1).float()).mean()
+                    # error_gans = critic(
+                    #     torch.cat((input_image.to(device2), y), dim=1).float()).mean()
                     # print(error_gans.item())
 
-                    error = 10 * error_sup - 5E-5 * error_gans
+                    error = 10 * error_sup # - 0.5 * error_gans
                     error.backward()
-                    error_accum.append(error.item())
+                    error_accum.append(error_sup.item())
 
                 grads = gradfilter_ema(
                     generator, grads=grads, alpha=agrok_lpha, lamb=grok_lamb)
@@ -183,66 +177,62 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
                 print(f'  Error: {losses[-1]}')
 
-            else:
-                print('Critic Optimization')
-                optimizerC.zero_grad()
-                for _ in trange(accumulated_batch):
-                    x, mask = data.load_batch()
-                    if x is None or mask is None:
-                        print("Batch returned None values.")
-                        continue
-                    x, mask = x.float().to(device1), mask.float().to(device1)
-                    input_image = (x > 0) * ((mask < 0.5) * x)
+            # else:
+            #     print('Critic Optimization')
+            #     optimizerC.zero_grad()
+            #     for _ in trange(accumulated_batch):
+            #         x, mask = data.load_batch()
+            #         if x is None or mask is None:
+            #             print("Batch returned None values.")
+            #             continue
+            #         x, mask = x.float().to(device1), mask.float().to(device1)
+            #         input_image = (x > 0) * ((mask < 0.5) * x)
 
-                    y = generator(input_image + mask * torch.rand_like(mask,
-                                                                       device=device1),
-                                  mask).float()
-                    # print(y.mean().item())
+            #         y = generator(input_image, mask).float()
+            #         # print(y.mean().item())
 
-                    real_x = torch.cat(
-                        (input_image, x), dim=1).float().to(device2)
-                    fake_x = torch.cat(
-                        (input_image.to(device2), y.detach()), dim=1).float()
+            #         real_x = torch.cat(
+            #             (input_image, x), dim=1).float().to(device2)
+            #         fake_x = torch.cat(
+            #             (input_image.to(device2), y.detach()), dim=1).float()
 
-                    error_fake = critic(fake_x).mean()
-                    error_real = critic(real_x).mean()
-                    penalty = grad_penalty(
-                        critic, real_x, fake_x, Lambda_penalty)
-                    # print(error_fake.item(),
-                    #       error_real.item(),
-                    #       penalty.item())
+            #         error_fake = critic(fake_x).mean()
+            #         error_real = critic(real_x).mean()
+            #         penalty = grad_penalty(
+            #             critic, real_x, fake_x, Lambda_penalty)
+            #         # print(error_fake.item(),
+            #         #       error_real.item(),
+            #         #       penalty.item())
 
-                    error = error_fake - error_real + penalty
-                    error.backward(retain_graph=True)
-                    error_accum.append(error.item())
-                    error_accum_real.append(error_real.item())
-                    error_accum_fake.append(error_fake.item())
+            #         error = error_fake - error_real + penalty
+            #         error.backward(retain_graph=True)
+            #         error_accum.append(error.item())
+            #         error_accum_real.append(error_real.item())
+            #         error_accum_fake.append(error_fake.item())
 
-                gradsC = gradfilter_ema(
-                    critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
-                optimizerC.step()
+            #     gradsC = gradfilter_ema(
+            #         critic, grads=gradsC, alpha=agrok_lpha, lamb=grok_lamb)
+            #     optimizerC.step()
 
-                critic_losses.append(sum(error_accum)/len(error_accum))
-                critic_losses_real.append(
-                    sum(error_accum_real)/len(error_accum_real))
-                critic_losses_fake.append(
-                    sum(error_accum_fake)/len(error_accum_fake))
+            #     critic_losses.append(sum(error_accum)/len(error_accum))
+            #     critic_losses_real.append(
+            #         sum(error_accum_real)/len(error_accum_real))
+            #     critic_losses_fake.append(
+            #         sum(error_accum_fake)/len(error_accum_fake))
 
-                print(f'  Error: {
-                      critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
+            #     print(f'  Error: {
+            #           critic_losses[-1]}, real:{critic_losses_real[-1]}, fake:{critic_losses_fake[-1]}')
 
         losses_train.append(sum(losses) / len(losses))
         losses = []
 
-        critic_losses_train.append(sum(critic_losses) / len(critic_losses))
+        critic_losses_train.append(0.)
         critic_losses = []
 
-        critic_losses_train_real.append(
-            sum(critic_losses_real) / len(critic_losses_real))
+        critic_losses_train_real.append(0.)
         critic_losses_real = []
 
-        critic_losses_train_fake.append(
-            sum(critic_losses_fake) / len(critic_losses_fake))
+        critic_losses_train_fake.append(0.)
         critic_losses_fake = []
 
         print(f'Average Train Loss: gen:{losses_train[-1]:.6f} crit:{critic_losses_train[-1]:.6f}, real:{critic_losses_train_real[-1]:.6f}, fake:{critic_losses_train_fake[-1]:.6f}')
@@ -262,10 +252,10 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
 
                 error_sup = sum([lambdas[i] * criterion[i](x.to(device2), y)
                                  for i in range(len(criterion))])
-                error_gans = critic(
-                    torch.cat((input_image.to(device2), y), dim=1).float()).mean()
+                # error_gans = critic(
+                #     torch.cat((input_image.to(device2), y), dim=1).float()).mean()
 
-                error = 10 * error_sup - 5E-4 * error_gans
+                error = 10 * error_sup # - 0.1 * error_gans
 
                 losses_temp.append(error.item())
                 mse.append(-torch.log10(mse_metric(x.to(device2), y) + 1e-12).item())
@@ -301,8 +291,8 @@ def train(checkpoint_path, epochs=200, lr=1E-4, batch=1,
         if epoch % 1 == 0:
             torch.save(generator.state_dict(),
                        f"{checkpoint_path}checkpoint_latest_{identity}.pt")
-            torch.save(critic.state_dict(),
-                       f"{checkpoint_path}critic_checkpoint_latest_{identity}.pt")
+            # torch.save(critic.state_dict(),
+            #            f"{checkpoint_path}critic_checkpoint_latest_{identity}.pt")
 
         if mse_val[-1] >= max(mse_val) or epoch == 0:
             torch.save(generator.state_dict(),
@@ -396,14 +386,14 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
         model = models.Global_UNet(
             in_c=1,
             out_c=1,
-            fact=64,
-            embed_dim=1024,
-            n_heads=32,
-            mlp_ratio=64,
+            fact=32,
+            embed_dim=256,
+            n_heads=16,
+            mlp_ratio=32,
             qkv_bias=True,
-            dropout_rate=0.1,
-            mask_downsample=8,
-            noise=False,
+            dropout_rate=0.,
+            mask_downsample=16,
+            noise=True,
             device1=device,
             device2=device
         )
@@ -429,9 +419,8 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 whole_mask = (x > 0.).float().to(device)
 
                 input_image = (x > 0) * ((mask < 0.5) * x)
-                y = model(input_image + mask *
-                          torch.rand_like(mask, device=device), mask)
-                synthetic_masked_region = mask * y * whole_mask * (y > 0.1)
+                y = model(input_image, mask)
+                synthetic_masked_region = mask * y * whole_mask
 
                 synthetic_masked_region, _ = match_contrast_inpaint(
                     synthetic_masked_region, input_image, mask)
@@ -439,7 +428,7 @@ def validate(checkpoint_path, model_path, batch=1, epochs=100,
                 score = [scores[i](
                     x,
                     input_image + synthetic_masked_region
-                ) for i in range(len(scores))]
+                    ) for i in range(len(scores))]
 
                 mse.append(score[0].item())
                 mae.append(score[1].item())
@@ -483,12 +472,12 @@ if __name__ == '__main__':
 
     HYAK = args.hyak
     checkpoint_path = '/gscratch/kurtlab/brats2024/repos/agam/brats-synth-local/log/' if HYAK else '/home/agam/Desktop/hyak-current-log/'
-    model_path = 'checkpoint_latest_{args.identity}.pt'
+    model_path = 'best_average_v4.pt'
     critic_path = 'critic_checkpoint_latest_{args.identity}.pt'
     params = [model_path, critic_path]
-    fresh = True
+    fresh = False
     epochs = 1000
-    lr = 1E-4
+    lr = 1E-3
     batch = 1
     accumulated_batch = 32
     device1 = args.device1
