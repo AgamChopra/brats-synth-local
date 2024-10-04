@@ -9,7 +9,37 @@ Created on July 2024
 import torch
 import torch.nn as nn
 
-from utils import count_parameters, test_model_memory_usage, pad3d
+from math import ceil
+
+
+def pad3d(inpt, target):
+    """
+    Pad or crop input image to match target size.
+
+    Args:
+        inpt (torch.tensor): Input tensor to be padded or cropped of shape (B, C, X, Y, Z).
+        target (torch.tensor or tuple): Target tensor of shape (B, C, X, Y, Z) or tuple of shape (X, Y, Z).
+
+    Returns:
+        torch.tensor: Resized (padded or cropped) input tensor matching size of target.
+    """
+    if torch.is_tensor(target):
+        delta = [target.shape[2+i] - inpt.shape[2+i] for i in range(3)]
+    else:
+        try:
+            delta = [target[i] - inpt.shape[2+i] for i in range(3)]
+        except Exception:
+            delta = [target - inpt.shape[2+i] for i in range(3)]
+
+    return nn.functional.pad(
+        input=inpt,
+        pad=(
+            ceil(delta[2]/2), delta[2] - ceil(delta[2]/2),
+            ceil(delta[1]/2), delta[1] - ceil(delta[1]/2),
+            ceil(delta[0]/2), delta[0] - ceil(delta[0]/2)
+        ),
+        mode='constant', value=0.0
+    ).to(dtype=inpt.dtype, device=inpt.device)
 
 
 class ElementWiseLayer(nn.Module):
@@ -128,39 +158,3 @@ class FourierBlock(nn.Module):
     def forward(self, x):
         y = self.layers(x)
         return y
-
-
-def test_vision_transformer3d():
-    # Define the model parameters
-    img_size = 48
-    in_c = 1
-    hid_c = 512
-    out_c = 32
-
-    # Instantiate the VisionTransformer3D model
-    model = FourierBlock(in_c, hid_c, out_c, img_size)
-
-    # Print the model architecture (optional)
-    print(
-        f'\nFNO Model size: {count_parameters(model)}\n'
-    )
-    # print(model)
-
-    # Create a random input tensor with the shape (batch_size, channels, depth, height, width)
-    batch_size = 1
-    input_tensor = torch.randn(batch_size, in_c, img_size, img_size, img_size)
-
-    # Pass the input tensor through the model
-    output = model(input_tensor)
-
-    # Print the output shape
-    print("Output shape:", output.shape)
-
-    test_model_memory_usage(model, input_tensor)
-
-    print("Test passed!")
-
-
-# Run the test function
-if __name__ == '__main__':
-    test_vision_transformer3d()

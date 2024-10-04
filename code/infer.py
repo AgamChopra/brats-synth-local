@@ -125,9 +125,10 @@ def run_inference(data_path, output_path, weights):
             output = output.detach().squeeze().numpy()
 
             # Output path
-            out_path = os.path.join(
+            full_output_path = os.path.join(
                 output_path, f"{file_id}-t1n-inference.nii.gz")
-            print(out_path)
+            print(output_path)
+            print(full_output_path)
 
             # Save the image to a .nii.gz file
-            save_nifti_with_origin(output, out_path, affine)
+            save_nifti_with_origin(output, full_output_path, affine)

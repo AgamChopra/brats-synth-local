@@ -10,10 +10,40 @@ Created on June 2023
 import torch
 import torch.nn as nn
 
-from utils import pad3d, count_parameters
+from math import ceil
 
-from network import AttentionGrid, Block
+from network import AttentionGrid, Block, Upsample
 from network import TransformerBlockDown, TransformerBlockUp, TransformerBlockLatant
+
+
+def pad3d(inpt, target):
+    """
+    Pad or crop input image to match target size.
+
+    Args:
+        inpt (torch.tensor): Input tensor to be padded or cropped of shape (B, C, X, Y, Z).
+        target (torch.tensor or tuple): Target tensor of shape (B, C, X, Y, Z) or tuple of shape (X, Y, Z).
+
+    Returns:
+        torch.tensor: Resized (padded or cropped) input tensor matching size of target.
+    """
+    if torch.is_tensor(target):
+        delta = [target.shape[2+i] - inpt.shape[2+i] for i in range(3)]
+    else:
+        try:
+            delta = [target[i] - inpt.shape[2+i] for i in range(3)]
+        except Exception:
+            delta = [target - inpt.shape[2+i] for i in range(3)]
+
+    return nn.functional.pad(
+        input=inpt,
+        pad=(
+            ceil(delta[2]/2), delta[2] - ceil(delta[2]/2),
+            ceil(delta[1]/2), delta[1] - ceil(delta[1]/2),
+            ceil(delta[0]/2), delta[0] - ceil(delta[0]/2)
+        ),
+        mode='constant', value=0.0
+    ).to(dtype=inpt.dtype, device=inpt.device)
 
 
 class Global_UNet(nn.Module):
@@ -41,24 +71,28 @@ class Global_UNet(nn.Module):
         self.device2 = device2
 
         self.downsample = nn.Sequential(
-            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=1, padding=3),
+            nn.Conv3d(in_c, in_c * fact, kernel_size=7, stride=2, padding=3),
             nn.InstanceNorm3d(in_c * fact),
             nn.GELU()
         ).to(device=device1)
 
         self.encoder_layers = nn.ModuleList([
-            TransformerBlockDown(in_c * fact, img_size=240, patch_size=24,
+            TransformerBlockDown(in_c * fact, img_size=120, patch_size=24,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio),
-            TransformerBlockDown(2 * in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockDown(2 * in_c * fact, img_size=60, patch_size=12,
+                                 dropout_rate=dropout_rate,
+                                 embed_dim=embed_dim, qkv_bias=qkv_bias,
+                                 mlp_ratio=mlp_ratio),
+            TransformerBlockDown(4 * in_c * fact, img_size=30, patch_size=6,
                                  dropout_rate=dropout_rate,
                                  embed_dim=embed_dim, qkv_bias=qkv_bias,
                                  mlp_ratio=mlp_ratio)
         ]).to(device=device1)
 
         self.latent_layer = nn.ModuleList([
-            TransformerBlockLatant(8 * in_c * fact, img_size=60, patch_size=12,
+            TransformerBlockLatant(8 * in_c * fact, img_size=15, patch_size=5,
                                    dropout_rate=dropout_rate,
                                    embed_dim=embed_dim, qkv_bias=qkv_bias,
                                    mlp_ratio=mlp_ratio,
@@ -67,21 +101,32 @@ class Global_UNet(nn.Module):
         ]).to(device=device1)
 
         self.decoder_layers = nn.ModuleList([
-            TransformerBlockUp(4 * in_c * fact, img_size=120, patch_size=24,
+            TransformerBlockUp(8 * in_c * fact, img_size=30, patch_size=6,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio),
-            TransformerBlockUp(2 * in_c * fact, img_size=240, patch_size=24,
+            TransformerBlockUp(4 * in_c * fact, img_size=60, patch_size=12,
+                               dropout_rate=dropout_rate,
+                               embed_dim=embed_dim, qkv_bias=qkv_bias,
+                               mlp_ratio=mlp_ratio),
+            TransformerBlockUp(2 * in_c * fact, img_size=120, patch_size=24,
                                dropout_rate=dropout_rate,
                                embed_dim=embed_dim, qkv_bias=qkv_bias,
                                mlp_ratio=mlp_ratio, final=True)
         ]).to(device=device2)
 
         self.upsample = nn.Sequential(
-            nn.Conv3d(in_c * fact, out_c, kernel_size=7, stride=1, padding=3)
+            nn.Conv3d(in_c * fact, out_c,
+                      kernel_size=7,
+                      stride=1,
+                      padding=3),
+            nn.InstanceNorm3d(in_c),
+            nn.GELU(),
+            nn.Dropout3d(dropout_rate),
+            nn.Conv3d(out_c, out_c, kernel_size=1)
         ).to(device=device2)
 
-    def forward(self, x, mask, type_='v6'):
+    def forward(self, x, mask):
         target_shape = x.shape[2:]
 
         y = pad3d(x.float(), 240)
@@ -89,7 +134,7 @@ class Global_UNet(nn.Module):
 
         y = y.to(device=self.device1)
         y = self.downsample(y)
-        # y_struc = y
+        y_structure = y
         # print('\n...model...')
         # print('downsample', y.mean().item())
 
@@ -114,12 +159,15 @@ class Global_UNet(nn.Module):
             # print('decoder', y.mean().item())
 
         # print(y.shape)
+        y = y + y_structure
         y = self.upsample(y)
-        y = nn.functional.sigmoid(y)
         # print('upsample', y.mean().item())
         # print(y.shape)
-        y = nn.functional.interpolate(y, size=240)
+        # y = nn.functional.sigmoid(y)
+        y = nn.functional.interpolate(y, size=240, mode='trilinear')
         y = pad3d(y, target=target_shape)
+        # y = y * nn.functional.sigmoid(x + mask)
+        # print('........\n')
         return y
 
 
@@ -233,48 +281,3 @@ class CriticA(nn.Module):
 
         return x.squeeze()
 
-
-def test_model(device='cpu', B=1, emb=1, ic=1, oc=1, n=64):
-    """
-    Test function to instantiate and test the models.
-
-    Args:
-        device (str, optional): Device to run the models on. Default is 'cpu'.
-        B (int, optional): Batch size. Default is 1.
-        emb (int, optional): Embedding dimension. Default is 1.
-        ic (int, optional): Input channels. Default is 1.
-        oc (int, optional): Output channels. Default is 1.
-        n (int, optional): Scaling factor for channels. Default is 64.
-    """
-    a = torch.ones((B, ic, 240, 240, 240), device=device)
-    mask = torch.ones((B, 1, 240, 240, 240), device=device)
-
-    model = Global_UNet(in_c=ic, out_c=oc, fact=4,
-                        embed_dim=8, n_heads=4,
-                        mlp_ratio=4, qkv_bias=True,
-                        dropout_rate=0.,
-                        mask_downsample=16,
-                        noise=True, device1=device, device2=device)
-    print(f'Generator size: {int(count_parameters(model)/1000000)}M')
-
-    critic = CriticA(in_c=2, fact=1).to(device)
-    print(f'Critic size: {int(count_parameters(critic)/1000000)}M')
-
-    optimizer = torch.optim.AdamW(
-        list(model.parameters()) + list(critic.parameters()), lr=1e-4)
-
-    b = model(a, mask)
-    c = critic(torch.cat((b, a), dim=1))
-
-    print(f'a:{a.shape}, m:{mask.shape}')
-    print(f'b:{b.shape}')
-    print(f'c:{c.shape}, {c}')
-
-    error = -c
-    error.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-
-
-if __name__ == '__main__':
-    test_model('cuda', B=1, n=64)

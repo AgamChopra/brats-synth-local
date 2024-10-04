@@ -9,8 +9,6 @@ Created on July 2024
 import torch
 import torch.nn as nn
 
-from utils import count_parameters, test_model_memory_usage
-
 
 class PatchEmbed3D(nn.Module):
     def __init__(self, img_size, patch_size, in_c=1, embed_dim=512):
@@ -161,56 +159,3 @@ class VisionTransformerBlock(nn.Module):
                       y_shape[2], y_shape[3], y_shape[4])
         y = self.conv_out(y)
         return y
-
-
-def test_vision_transformer3d():
-    # Define the model parameters
-    img_size = 48
-    patch_size = 8
-    in_c = 1
-    out_c = 32
-    n_classes = img_size**3
-    embed_dim = 512
-    n_heads = 8
-    mlp_ratio = 8.0
-    qkv_bias = True
-    dropout = 0.0
-
-    # Instantiate the VisionTransformer3D model
-    model = VisionTransformerBlock(
-        img_size=img_size,
-        patch_size=patch_size,
-        in_c=in_c,
-        out_c=out_c,
-        n_classes=n_classes,
-        embed_dim=embed_dim,
-        n_heads=n_heads,
-        mlp_ratio=mlp_ratio,
-        qkv_bias=qkv_bias,
-        dropout=dropout
-    )
-
-    # Print the model architecture (optional)
-    print(
-        f'\nGated Linear 3DVT Model size: {int(count_parameters(model)/1000000)}M\n'
-    )
-    # print(model)
-
-    # Create a random input tensor with the shape (batch_size, channels, depth, height, width)
-    batch_size = 1
-    input_tensor = torch.randn(batch_size, in_c, img_size, img_size, img_size)
-
-    # Pass the input tensor through the model
-    output = model(input_tensor)
-
-    # Print the output shape
-    print("Output shape:", output.shape)
-
-    test_model_memory_usage(model, input_tensor)
-
-    print("Test passed!")
-
-
-# Run the test function
-if __name__ == '__main__':
-    test_vision_transformer3d()
